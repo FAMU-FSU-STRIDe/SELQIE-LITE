@@ -35,7 +35,7 @@ sudo pip3 install smbus2
 I2C Address: default is `0x76`, so check the i2c address.
 
 ```sh: Terminal
-i2cdetect -y 1
+i2cdetect -y 7
 Warning: Can't use SMBus Quick Write command, will skip some addresses
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
 00:
@@ -50,7 +50,7 @@ Warning: Can't use SMBus Quick Write command, will skip some addresses
 # If it is not detected by i2cdtect, run the following:
 # If you use more than two, you will need to use another device as dump detection is not possible with 0x76.
 
-i2cdump -y 1 0x76
+i2cdump -y 7 0x76
 No size specified (using byte-data access)
      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f    0123456789abcdef
 00: 7b 00 XX XX XX XX XX XX XX XX XX XX XX XX XX XX    {.XXXXXXXXXXXXXX

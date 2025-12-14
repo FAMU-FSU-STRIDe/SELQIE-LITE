@@ -16,8 +16,8 @@ import time
 class BarComponentr:
     def __init__(self):
         
-        self.sensor = ms5837.MS5837_30BA() # Default I2C bus is 1 (Raspberry Pi 3)
-        #self.sensor = ms5837.MS5837_30BA(0) # Specify I2C bus
+        self.sensor = ms5837.MS5837_30BA() # Default I2C bus is 7
+        #self.sensor = ms5837.MS5837_30BA(7) # Specify I2C bus
         #self.sensor = ms5837.MS5837_02BA()
         #self.sensor = ms5837.MS5837_02BA(0)
         #self.sensor = ms5837.MS5837(model=ms5837.MS5837_MODEL_30BA, bus=0) # Specify model and bus

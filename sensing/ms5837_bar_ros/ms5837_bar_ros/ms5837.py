@@ -33,7 +33,7 @@ class MS5837:
     the ROS nodes in this repository to run without modification.
     """
 
-    def __init__(self, model: int = MS5837_MODEL_30BA, bus: int = 1) -> None:
+    def __init__(self, model: int = MS5837_MODEL_30BA, bus: int = 7) -> None:
         self.model = model
         self.bus = bus
         self._fluid_density = DENSITY_FRESHWATER
@@ -110,10 +110,10 @@ class MS5837:
 
 
 class MS5837_30BA(MS5837):
-    def __init__(self, bus: int = 1) -> None:
+    def __init__(self, bus: int = 7) -> None:
         super().__init__(MS5837_MODEL_30BA, bus)
 
 
 class MS5837_02BA(MS5837):
-    def __init__(self, bus: int = 1) -> None:
+    def __init__(self, bus: int = 7) -> None:
         super().__init__(MS5837_MODEL_02BA, bus)

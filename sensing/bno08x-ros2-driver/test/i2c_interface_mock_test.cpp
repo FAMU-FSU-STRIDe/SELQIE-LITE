@@ -14,7 +14,7 @@ public:
 };
 
 TEST(I2CInterfaceTest, OpenSuccess) {
-    MockI2CInterface mock("/dev/i2c-1", 0x28);
+    MockI2CInterface mock("/dev/i2c-7", 0x28);
 
     EXPECT_CALL(mock, open())
         .Times(1)
@@ -24,7 +24,7 @@ TEST(I2CInterfaceTest, OpenSuccess) {
 }
 
 TEST(I2CInterfaceTest, ReadSuccess) {
-    MockI2CInterface mock("/dev/i2c-1", 0x28);
+    MockI2CInterface mock("/dev/i2c-7", 0x28);
 
     uint8_t buffer[10];
     uint32_t timestamp = 0;
@@ -37,7 +37,7 @@ TEST(I2CInterfaceTest, ReadSuccess) {
 }
 
 TEST(I2CInterfaceTest, WriteSuccess) {
-    MockI2CInterface mock("/dev/i2c-1", 0x28);
+    MockI2CInterface mock("/dev/i2c-7", 0x28);
 
     uint8_t buffer[10] = {1, 2, 3, 4, 5};
 
