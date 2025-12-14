@@ -59,7 +59,7 @@ def generate_launch_description():
              }]),
 
         # Beuhler Clock
-        Node(package='quad_legs', executable='beuler_clock', name='beuler_clock',
+        Node(package='quad_legs', executable='beuhler_clock', name='beuhler_clock',
              parameters=[{
                  'frequency_hz': frequency,
                  'group_offset_deg': offset_deg,

@@ -32,6 +32,7 @@ setup(
             'main_control = quad_legs.main_control:main',
             'quad_leg_ui  = quad_legs.quad_leg_ui:main',
             'quad_leg_freq = quad_legs.quad_leg_freq:main',  # include only if that file exists
+            'beuhler_clock = quad_legs.beuhler_clock:main',
         ],
     },
 )
