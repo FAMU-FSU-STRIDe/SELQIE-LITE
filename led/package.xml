@@ -2,8 +2,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>led</name>
-  <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <version>0.0.4</version>
+  <description>SPI-driven WS2812B (NeoPixel) driver and tools for ROS 2</description>
   <maintainer email="rykaczmarczyk@gmail.com">ciscor</maintainer>
   <license>MIT</license>
 

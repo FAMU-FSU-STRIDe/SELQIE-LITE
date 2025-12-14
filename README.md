@@ -18,7 +18,7 @@ low-level CubeMars motor drivers, a tmux-based operator UI, LED feedback, and
 | ---- | ---- | ------- |
 | `quad_legs/` | Python ROS 2 package | Quadruped control stack (CubeMars CAN driver, joystick loop, and PyQt5 UI). |
 | `motor_interfaces/` | Interface package | Custom `MotorState` message exported for all other nodes. |
-| `selqie_tmux_ui/` | Python ROS 2 package | tmux session helper that launches the quadruped stack and keeps a spare console pane open. |
+| `selqie_ui/` | Python ROS 2 package | Interactive console for controlling the quadruped stack and monitoring motor state. |
 | `ws2812b_ros/` | Python ROS 2 package | SPI-based driver, CLI, and demo launch for WS2812B (NeoPixel) LED strips on Jetson boards. |
 | `bno08x-ros2-driver/` | Submodule | Upstream 9-DOF IMU driver from SparkFun (used for state estimation). |
 | `zed-ros2-wrapper/` | Submodule | Stereolabs ZED ROS 2 camera wrapper. |
@@ -84,19 +84,16 @@ Launch everything together with `ros2 launch quad_legs quad_full.launch.py`. The
 launch file spins four `motor_node` instances and the PyQt UI. Uncomment the
 `main_control` block if you want joystick control in the same session.
 
-### `selqie_tmux_ui`
+### `selqie_ui`
 
-A ROS 2 entry point that spawns a repeatable tmux layout—left pane runs
-`ros2 launch quad_legs quad_full.launch.py`, right pane stays interactive for
-inspection commands. Run it via
+A ROS 2 entry point that opens an interactive SELQIE motor console. It publishes
+MIT commands to each `/motorX/mit_cmd` topic, handles special commands like
+`start`, `zero`, and `exit`, and prints recent `MotorState` feedback. Run it
+via:
 
 ```bash
-ros2 run selqie_tmux_ui tmux_ui -- --recreate --session-name selqie_ui
+ros2 run selqie_ui selqie_terminal
 ```
-
-or through `ros2 launch selqie_tmux_ui tmux_session.launch.py`. Flags let you
-change the session name, replace either pane’s command, detach immediately, or
-force a clean restart of the existing tmux session.
 
 ### `ws2812b_ros`
 
