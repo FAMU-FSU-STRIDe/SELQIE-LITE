@@ -20,7 +20,6 @@ low-level CubeMars motor drivers, a tmux-based operator UI, LED feedback, and
 | `motor_interfaces/` | Interface package | Custom `MotorState` message exported for all other nodes. |
 | `selqie_ui/` | Python ROS 2 package | Interactive console for controlling the quadruped stack and monitoring motor state. |
 | `ws2812b_ros/` | Python ROS 2 package | SPI-based driver, CLI, and demo launch for WS2812B (NeoPixel) LED strips on Jetson boards. |
-| `sensing/mjbots_power_dist/` | Python ROS 2 package | SocketCAN listener that decodes telemetry from the MJBots power dist r4.5b and republishes ROS topics. |
 | `bno08x-ros2-driver/` | Submodule | Upstream 9-DOF IMU driver from SparkFun (used for state estimation). |
 | `zed-ros2-wrapper/` | Submodule | Stereolabs ZED ROS 2 camera wrapper. |
 | `zed-ros2-examples/` | Submodule | Sample applications that exercise the ZED wrapper. |
