@@ -353,6 +353,54 @@ class SELQIETerminal(Cmd):
         if targets:
             self._console.send_special('zero', targets)
 
+    def do_origin(self, line: str) -> None:
+        """Command motors to return to the origin (0 rad).
+
+        Usage: origin [motor_id|all]
+        """
+
+        targets = self._parse_targets(line, default_all=True)
+        if not targets:
+            return
+
+        # Move slowly toward zero rather than snapping there. We step each
+        # motor toward 0 rad in small increments to keep the motion gentle.
+        step_size = 0.05  # rad per step
+        sleep_s = 0.1
+        kp = 1.0
+        kd = 0.2
+        tolerance = 0.01
+
+        # Initialize per-motor commanded positions from the latest state if
+        # available so we can smoothly walk them toward zero.
+        state_snapshot = self._console.snapshot_states()
+        commanded = {
+            motor_id: float(state_snapshot[motor_id].position)
+            if state_snapshot.get(motor_id) is not None
+            else 0.0
+            for motor_id in targets
+        }
+
+        while True:
+            remaining = False
+            for motor_id in targets:
+                pos = commanded[motor_id]
+                if abs(pos) <= tolerance:
+                    # Already close enough to zero.
+                    self._console.send_cmd(motor_id, 0.0, 0.0, kp, kd, 0.0)
+                    continue
+
+                step = min(step_size, abs(pos))
+                commanded[motor_id] = pos - math.copysign(step, pos)
+                self._console.send_cmd(
+                    motor_id, commanded[motor_id], 0.0, kp, kd, 0.0
+                )
+                remaining = True
+
+            if not remaining:
+                break
+            time.sleep(sleep_s)
+
     def do_clear(self, line: str) -> None:
         """Clear commands and hold zeros. Usage: clear [motor_id|all]"""
         targets = self._parse_targets(line, default_all=True)
