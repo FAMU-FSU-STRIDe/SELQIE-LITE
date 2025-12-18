@@ -392,7 +392,8 @@ class ServoMotorNode(Node):
         pos = float(position_deg)
         if self.reverse_polarity:
             pos = -pos
-        payload = _i32_to_be_bytes(int(pos * 1000000.0))
+        # servo_can.py encodes position as degrees * 10000 (0.0001 deg resolution)
+        payload = _i32_to_be_bytes(int(pos * 10000.0))
         self._send_ext(int(ServoPacketID.CAN_PACKET_SET_POS), payload)
 
     def _send_set_origin(self, mode: int):

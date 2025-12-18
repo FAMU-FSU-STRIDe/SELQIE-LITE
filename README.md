@@ -86,10 +86,11 @@ launch file spins four `motor_node` instances and the PyQt UI. Uncomment the
 
 ### `selqie_ui`
 
-A ROS 2 entry point that opens an interactive SELQIE motor console. It publishes
-MIT commands to each `/motorX/mit_cmd` topic, handles special commands like
-`start`, `zero`, and `exit`, and prints recent `MotorState` feedback. Run it
-via:
+A ROS 2 entry point that opens an interactive SELQIE motor console. It targets
+the Servo-mode driver, publishing to `/motorX/servo_cmd` with helpers for duty,
+current, ERPM, position, or combined position/speed requests while still
+handling special commands like `start`, `zero`, and `exit` and printing recent
+`MotorState` feedback. Run it via:
 
 ```bash
 ros2 run selqie_ui selqie_terminal
