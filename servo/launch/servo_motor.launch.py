@@ -39,7 +39,6 @@ def generate_launch_description():
                 'joint_name': 'motor1',
                 'control_hz': control_hz,
                 'auto_start': auto_start,
-                'reverse_polarity': True,
             }],
         ),
 
@@ -55,6 +54,7 @@ def generate_launch_description():
                 'joint_name': 'motor2',
                 'control_hz': control_hz,
                 'auto_start': auto_start,
+                'reverse_polarity': True,
             }],
         ),
 
@@ -69,8 +69,7 @@ def generate_launch_description():
                 'can_id': 3,
                 'joint_name': 'motor3',
                 'control_hz': control_hz,
-                'auto_start': auto_start,
-                'reverse_polarity': True, 
+                'auto_start': auto_start, 
             }],
         ),
 
@@ -86,6 +85,7 @@ def generate_launch_description():
                 'joint_name': 'motor4',
                 'control_hz': control_hz,
                 'auto_start': auto_start,
+                'reverse_polarity': True,
             }],
         ),
     ])

@@ -18,7 +18,7 @@ tmux split-window -v
 
 # Launch SELQIE in top-left
 tmux select-pane -t 0
-tmux send-keys "source ${ROS2_WS}/install/setup.bash; ros2 launch selqie_bringup selqie_hw.launch.py" C-m
+tmux send-keys "source ${ROS2_WS}/install/setup.bash; ros2 launch servo servo_motor.launch.py" C-m
 
 # Sourced environment in bottom-left
 tmux select-pane -t 1
