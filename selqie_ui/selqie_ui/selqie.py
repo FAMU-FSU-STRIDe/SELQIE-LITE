@@ -165,7 +165,7 @@ class BeuhlerClock:
 
         # Constants
         self.group_offset_deg = 180.0
-        self.control_hz = 100.0
+        self.control_hz = 50.0
         self.kp = 0.0
         self.kd = 1.0
         self.max_vel_abs = 20.0
@@ -321,7 +321,7 @@ class SwimGait:
         self.delta_angle = 0.5
 
         # Control settings
-        self.control_hz = 100.0
+        self.control_hz = 50.0
         self.kp = 5.0
         self.kd = 1.0
 
