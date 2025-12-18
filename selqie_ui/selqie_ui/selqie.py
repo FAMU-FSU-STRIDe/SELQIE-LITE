@@ -100,33 +100,6 @@ class MotorConsole(Node):
         if pub:
             pub.publish(msg)
 
-    def send_duty(self, targets: Iterable[int], duty: float) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 0, duty)
-
-    def send_current(self, targets: Iterable[int], current: float) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 1, current)
-
-    def send_brake_current(self, targets: Iterable[int], current: float) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 2, current)
-
-    def send_rpm(self, targets: Iterable[int], erpm: float) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 3, erpm)
-
-    def send_position_deg(self, targets: Iterable[int], position_deg: float) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 4, position_deg)
-
-    def send_position_rad(self, targets: Iterable[int], position_rad: float) -> None:
-        self.send_position_deg(targets, math.degrees(position_rad))
-
-    def send_origin(self, targets: Iterable[int], mode: int = 1) -> None:
-        for motor_id in targets:
-            self.send_servo_cmd(motor_id, 5, mode)
-
     def send_position_speed(
         self, targets: Iterable[int], position_rad: float, velocity_rad_s: float, accel_rad_s2: float = 0.0
     ) -> None:
@@ -474,12 +447,6 @@ class SELQIE:
         if targets:
             self._console.send_special('zero', targets)
 
-    def origin(self, line: str) -> None:
-        targets = self._parse_targets(line, default_all=True)
-        if not targets:
-            return
-        self._console.send_position_rad(targets, 0.0)
-
     def clear(self, line: str) -> None:
         targets = self._parse_targets(line, default_all=True)
         if targets:
@@ -536,135 +503,6 @@ class SELQIE:
 
         self._swim.start(frequency_hz=freq, center_angle=center, delta_angle=delta)
         print('Started swim gait with:', freq, center, delta)
-
-    def set_duty(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_duty <motor_id|all> <duty>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            duty = float(parts[1])
-        except ValueError:
-            print('Duty must be numeric')
-            return
-
-        self._console.send_duty(targets, duty)
-
-    def set_current(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_current <motor_id|all> <amps>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            current = float(parts[1])
-        except ValueError:
-            print('Current must be numeric')
-            return
-
-        self._console.send_current(targets, current)
-
-    def set_brake(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_brake <motor_id|all> <amps>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            current = float(parts[1])
-        except ValueError:
-            print('Current must be numeric')
-            return
-
-        self._console.send_brake_current(targets, current)
-
-    def set_rpm(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_rpm <motor_id|all> <erpm>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            erpm = float(parts[1])
-        except ValueError:
-            print('ERPM must be numeric')
-            return
-
-        self._console.send_rpm(targets, erpm)
-
-    def set_pos(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_pos <motor_id|all> <position_deg>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            pos_deg = float(parts[1])
-        except ValueError:
-            print('Position must be numeric')
-            return
-
-        self._console.send_position_deg(targets, pos_deg)
-
-    def set_pos_rad(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) != 2:
-            print('Usage: set_pos_rad <motor_id|all> <position_rad>')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            pos_rad = float(parts[1])
-        except ValueError:
-            print('Position must be numeric')
-            return
-
-        self._console.send_position_rad(targets, pos_rad)
-
-    def set_pos_spd(self, line: str) -> None:
-        parts = line.split()
-        if len(parts) < 3:
-            print('Usage: set_pos_spd <motor_id|all> <position_deg> <erpm> [accel_erpm_s]')
-            return
-
-        targets = self._parse_targets(parts[0])
-        if not targets:
-            return
-
-        try:
-            pos_deg = float(parts[1])
-            erpm = float(parts[2])
-            accel = float(parts[3]) if len(parts) > 3 else 0.0
-        except ValueError:
-            print('Position, ERPM, and accel must be numeric')
-            return
-
-        for motor_id in targets:
-            self._console.send_servo_cmd(motor_id, 6, pos_deg, erpm, accel)
 
     def idle(self, line: str) -> None:
         targets = self._parse_targets(line, default_all=True)
