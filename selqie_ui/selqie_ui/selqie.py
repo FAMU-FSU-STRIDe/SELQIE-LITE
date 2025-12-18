@@ -385,9 +385,10 @@ class SwimGait:
             omega = 2.0 * math.pi * freq
             position = center if freq == 0.0 else center + delta * math.sin(omega * elapsed)
             velocity = 0.0 if freq == 0.0 else omega * delta * math.cos(omega * elapsed)
+            acceleration = 0.0 if freq == 0.0 else -omega * omega * delta * math.sin(omega * elapsed)
 
             for motor_id in MotorConsole.MOTOR_IDS:
-                self._console.send_position_speed((motor_id,), position, velocity)
+                self._console.send_position_speed((motor_id,), position, velocity, acceleration)
 
             time.sleep(1.0 / self.control_hz)
 
