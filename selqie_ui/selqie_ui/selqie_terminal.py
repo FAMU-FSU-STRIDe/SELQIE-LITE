@@ -27,7 +27,7 @@ class MotorConsole(Node):
         # Publishers
         self._cmd_pubs = {
             motor_id: self.create_publisher(
-                Float64MultiArray, f'/motor{motor_id}/mit_cmd', 10
+                Float64MultiArray, f'/motor{motor_id}/servo_cmd', 10
             )
             for motor_id in self.MOTOR_IDS
         }
@@ -95,16 +95,57 @@ class MotorConsole(Node):
             if pub:
                 pub.publish(msg)
 
-    def send_cmd(self, target: int, position: float, velocity: float, kp: float, kd: float, torque: float) -> None:
+    def send_servo_cmd(self, target: int, mode: int, v0: float = 0.0, v1: float = 0.0, v2: float = 0.0) -> None:
         msg = Float64MultiArray()
-        msg.data = [float(position), float(velocity), float(kp), float(kd), float(torque)]
+        msg.data = [float(mode), float(v0), float(v1), float(v2)]
         pub = self._cmd_pubs.get(target)
         if pub:
             pub.publish(msg)
 
-    def send_velocity(self, targets: Iterable[int], velocity: float, kp: float = 0.0, kd: float = 1.0, torque: float = 0.0) -> None:
+    def send_duty(self, targets: Iterable[int], duty: float) -> None:
         for motor_id in targets:
-            self.send_cmd(motor_id, 0.0, velocity, kp, kd, torque)
+            self.send_servo_cmd(motor_id, 0, duty)
+
+    def send_current(self, targets: Iterable[int], current: float) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 1, current)
+
+    def send_brake_current(self, targets: Iterable[int], current: float) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 2, current)
+
+    def send_rpm(self, targets: Iterable[int], erpm: float) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 3, erpm)
+
+    def send_position_deg(self, targets: Iterable[int], position_deg: float) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 4, position_deg)
+
+    def send_position_rad(self, targets: Iterable[int], position_rad: float) -> None:
+        self.send_position_deg(targets, math.degrees(position_rad))
+
+    def send_origin(self, targets: Iterable[int], mode: int = 1) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 5, mode)
+
+    def send_position_speed(
+        self, targets: Iterable[int], position_rad: float, velocity_rad_s: float, accel_rad_s2: float = 0.0
+    ) -> None:
+        position_deg = math.degrees(position_rad)
+        erpm = velocity_rad_s * 60.0 / (2.0 * math.pi)
+        accel_erpm_s = accel_rad_s2 * 60.0 / (2.0 * math.pi)
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 6, position_deg, erpm, accel_erpm_s)
+
+    def send_idle(self, targets: Iterable[int]) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 7, 0.0, 0.0, 0.0)
+
+    def send_velocity(self, targets: Iterable[int], velocity: float) -> None:
+        erpm = velocity * 60.0 / (2.0 * math.pi)
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 3, erpm)
 
     def snapshot_states(self) -> dict[int, MotorState]:
         with self._lock:
@@ -372,7 +413,7 @@ class SwimGait:
             velocity = 0.0 if freq == 0.0 else omega * delta * math.cos(omega * elapsed)
 
             for motor_id in MotorConsole.MOTOR_IDS:
-                self._console.send_cmd(motor_id, position, velocity, self.kp, self.kd, 0.0)
+                self._console.send_position_speed((motor_id,), position, velocity)
 
             time.sleep(1.0 / self.control_hz)
 
@@ -381,7 +422,7 @@ class SwimGait:
 #######################################################
 
 class SELQIETerminal(Cmd):
-    """Cmd-based shell that speaks directly to the quad_legs motor topics."""
+    """Cmd-based shell that speaks directly to the servo motor topics."""
 
     intro = 'Welcome to the SELQIE terminal. Type help or ? to list commands.\n'
     prompt = 'SELQIE> '
@@ -432,7 +473,7 @@ class SELQIETerminal(Cmd):
             self._console.send_special('start', targets)
 
     def do_stop_motors(self, line: str) -> None:
-        """Send the 'exit' special command to stop MIT mode. Usage: stop_motors [motor_id|all]"""
+        """Send the 'exit' special command to stop servo mode. Usage: stop_motors [motor_id|all]"""
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_special('exit', targets)
@@ -453,8 +494,7 @@ class SELQIETerminal(Cmd):
         if not targets:
             return
 
-        for motor_id in targets:
-            self._console.send_cmd(motor_id, 0.0, 0.0, 5.0, 1.0, 0.0)
+        self._console.send_position_rad(targets, 0.0)
 
     def do_clear(self, line: str) -> None:
         """Clear commands and hold zeros. Usage: clear [motor_id|all]"""
@@ -545,31 +585,42 @@ class SELQIETerminal(Cmd):
             f"delta={math.degrees(self._swim.delta_angle):.1f}°"
         )
 
-    # ---- MIT command helpers -----------------------------------------
+    # ---- Servo command helpers ---------------------------------------
     def do_set_cmd(self, line: str) -> None:
-        """Send a full MIT command. Usage: set_cmd <motor_id|all> <p> <v> <kp> <kd> <torque>"""
+        """Send a servo position+speed command (mode 6).
+
+        Usage: set_cmd <motor_id|all> <position_rad> <velocity_rad_s> [kp] [kd] [torque]
+
+        The MIT gains/torque parameters are accepted for compatibility but are
+        ignored; position/velocity are converted to degrees/ERPM for servo
+        mode.
+        """
+
         parts = line.split()
-        if len(parts) != 6:
-            print('Usage: set_cmd <motor_id|all> <p> <v> <kp> <kd> <torque>')
+        if len(parts) < 3:
+            print('Usage: set_cmd <motor_id|all> <position_rad> <velocity_rad_s> [kp] [kd] [torque]')
             return
 
         targets = self._parse_targets(parts[0])
         if not targets:
             return
         try:
-            p_val, v_val, kp_val, kd_val, t_val = map(float, parts[1:])
+            p_val = float(parts[1])
+            v_val = float(parts[2])
         except ValueError:
-            print('Position, velocity, kp, kd, and torque must be numeric')
+            print('Position and velocity must be numeric')
             return
 
-        for target in targets:
-            self._console.send_cmd(target, p_val, v_val, kp_val, kd_val, t_val)
+        self._console.send_position_speed(targets, p_val, v_val)
 
     def do_set_vel(self, line: str) -> None:
-        """Convenience velocity command. Usage: set_vel <motor_id|all> <vel> [kp] [kd] [torque]"""
+        """Set target motor speed via servo RPM command (mode 3).
+
+        Usage: set_vel <motor_id|all> <velocity_rad_s>
+        """
         parts = line.split()
         if len(parts) < 2:
-            print('Usage: set_vel <motor_id|all> <vel> [kp] [kd] [torque]')
+            print('Usage: set_vel <motor_id|all> <velocity_rad_s>')
             return
 
         targets = self._parse_targets(parts[0])
@@ -578,14 +629,161 @@ class SELQIETerminal(Cmd):
 
         try:
             vel = float(parts[1])
-            kp = float(parts[2]) if len(parts) > 2 else 0.0
-            kd = float(parts[3]) if len(parts) > 3 else 1.0
-            torque = float(parts[4]) if len(parts) > 4 else 0.0
         except ValueError:
-            print('Velocity, kp, kd, and torque must be numeric')
+            print('Velocity must be numeric')
             return
 
-        self._console.send_velocity(targets, vel, kp=kp, kd=kd, torque=torque)
+        self._console.send_velocity(targets, vel)
+
+    def do_set_duty(self, line: str) -> None:
+        """Send raw duty cycle (mode 0). Usage: set_duty <motor_id|all> <duty[-1..1]>"""
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_duty <motor_id|all> <duty[-1..1]>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            duty = float(parts[1])
+        except ValueError:
+            print('Duty must be numeric')
+            return
+
+        self._console.send_duty(targets, duty)
+
+    def do_set_current(self, line: str) -> None:
+        """Send torque current (mode 1). Usage: set_current <motor_id|all> <amps>"""
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_current <motor_id|all> <amps>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            current = float(parts[1])
+        except ValueError:
+            print('Current must be numeric')
+            return
+
+        self._console.send_current(targets, current)
+
+    def do_set_brake(self, line: str) -> None:
+        """Send brake current (mode 2). Usage: set_brake <motor_id|all> <amps>"""
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_brake <motor_id|all> <amps>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            current = float(parts[1])
+        except ValueError:
+            print('Current must be numeric')
+            return
+
+        self._console.send_brake_current(targets, current)
+
+    def do_set_rpm(self, line: str) -> None:
+        """Send ERPM directly (mode 3). Usage: set_rpm <motor_id|all> <erpm>"""
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_rpm <motor_id|all> <erpm>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            erpm = float(parts[1])
+        except ValueError:
+            print('ERPM must be numeric')
+            return
+
+        self._console.send_rpm(targets, erpm)
+
+    def do_set_pos(self, line: str) -> None:
+        """Send absolute position (degrees) via servo position command (mode 4).
+
+        Usage: set_pos <motor_id|all> <position_deg>
+        """
+
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_pos <motor_id|all> <position_deg>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            pos_deg = float(parts[1])
+        except ValueError:
+            print('Position must be numeric')
+            return
+
+        self._console.send_position_deg(targets, pos_deg)
+
+    def do_set_pos_rad(self, line: str) -> None:
+        """Send absolute position in radians (converted to degrees). Usage: set_pos_rad <motor_id|all> <position_rad>"""
+        parts = line.split()
+        if len(parts) != 2:
+            print('Usage: set_pos_rad <motor_id|all> <position_rad>')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            pos_rad = float(parts[1])
+        except ValueError:
+            print('Position must be numeric')
+            return
+
+        self._console.send_position_rad(targets, pos_rad)
+
+    def do_set_pos_spd(self, line: str) -> None:
+        """Send position + speed + accel (mode 6).
+
+        Usage: set_pos_spd <motor_id|all> <position_deg> <erpm> [accel_erpm_s]
+        """
+
+        parts = line.split()
+        if len(parts) < 3:
+            print('Usage: set_pos_spd <motor_id|all> <position_deg> <erpm> [accel_erpm_s]')
+            return
+
+        targets = self._parse_targets(parts[0])
+        if not targets:
+            return
+
+        try:
+            pos_deg = float(parts[1])
+            erpm = float(parts[2])
+            accel = float(parts[3]) if len(parts) > 3 else 0.0
+        except ValueError:
+            print('Position, ERPM, and accel must be numeric')
+            return
+
+        for motor_id in targets:
+            self._console.send_servo_cmd(motor_id, 6, pos_deg, erpm, accel)
+
+    def do_idle(self, line: str) -> None:
+        """Send idle (mode 7). Usage: idle [motor_id|all]"""
+        targets = self._parse_targets(line, default_all=True)
+        if targets:
+            self._console.send_idle(targets)
 
     # ---- inspection ---------------------------------------------------
     def do_status(self, line: str) -> None:
