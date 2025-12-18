@@ -100,17 +100,11 @@ class MotorConsole(Node):
         if pub:
             pub.publish(msg)
 
-    def send_position_speed(
-        self, targets: Iterable[int], position_rad: float, velocity_rad_s: float, accel_rad_s2: float = 0.0
-    ) -> None:
+    def send_position(self, targets: Iterable[int], position_rad: float) -> None:
         position_deg = math.degrees(position_rad)
-        erpm = velocity_rad_s * 60.0 / (2.0 * math.pi)
-        # Acceleration is specified in electrical RPM/s^2, matching the speed units
-        # noted in the AK driver manual (no extra 0.1 scaling here; driver handles
-        # 0.1 ERPM step internally when encoding the CAN packet).
-        accel_erpm_s2 = accel_rad_s2 * 60.0 / (2.0 * math.pi)
         for motor_id in targets:
-            self.send_servo_cmd(motor_id, 6, position_deg, erpm, accel_erpm_s2)
+            # Mode 4 = position loop control on the motor
+            self.send_servo_cmd(motor_id, 4, position_deg, 0.0, 0.0)
 
     def send_idle(self, targets: Iterable[int]) -> None:
         for motor_id in targets:
@@ -384,11 +378,9 @@ class SwimGait:
             elapsed = time.time() - start_time
             omega = 2.0 * math.pi * freq
             position = center if freq == 0.0 else center + delta * math.sin(omega * elapsed)
-            velocity = 0.0 if freq == 0.0 else omega * delta * math.cos(omega * elapsed)
-            acceleration = 0.0 if freq == 0.0 else -omega * omega * delta * math.sin(omega * elapsed)
 
             for motor_id in MotorConsole.MOTOR_IDS:
-                self._console.send_position_speed((motor_id,), position, velocity, acceleration)
+                self._console.send_position((motor_id,), position)
 
             time.sleep(1.0 / self.control_hz)
 
