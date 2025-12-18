@@ -248,7 +248,7 @@ class ServoMotorNode(Node):
 
             ms = MotorState()
             ms.name = self.joint_name
-            ms.position = pos_rad
+            ms.position = pos_deg
             ms.abs_position = pos_rad  # servo mode reply doesn't wrap the same way; keep equal
             ms.velocity = vel_rads
             ms.current = cur_a
