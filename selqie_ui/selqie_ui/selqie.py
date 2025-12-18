@@ -488,6 +488,7 @@ class SELQIE:
         if parts[0].lower() == 'stop':
             if self._swim.is_running():
                 self._swim.stop()
+                self.stop_motors('All')
                 print('Swim gait stopped.')
             else:
                 print('Swim gait is not running.')
@@ -501,6 +502,11 @@ class SELQIE:
             print('Frequency, center_angle, and delta_angle must be numeric')
             return
 
+        if freq < 0:
+            print('Frequency must be non-negative')
+            return
+
+        self.start_motors('All')
         self._swim.start(frequency_hz=freq, center_angle=center, delta_angle=delta)
         print('Started swim gait with:', freq, center, delta)
 
