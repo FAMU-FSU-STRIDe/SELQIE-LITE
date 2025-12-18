@@ -404,8 +404,12 @@ class ServoMotorNode(Node):
 
     def _send_pos_spd(self, position_deg: float, erpm: float, accel_erpm_per_s: float):
         pos = float(position_deg)
-        spd = int(float(erpm))
-        acc = int(float(accel_erpm_per_s))
+        # Driver expects speed/accel in 0.1 electrical RPM units (int16 range)
+        spd_units = int(round(float(erpm) / 10.0))
+        acc_units = int(round(float(accel_erpm_per_s) / 10.0))
+        # Clamp to int16 to avoid overflow
+        spd = max(-32768, min(32767, spd_units))
+        acc = max(-32768, min(32767, acc_units))
         if self.reverse_polarity:
             pos = -pos
             spd = -spd
