@@ -105,9 +105,12 @@ class MotorConsole(Node):
     ) -> None:
         position_deg = math.degrees(position_rad)
         erpm = velocity_rad_s * 60.0 / (2.0 * math.pi)
-        accel_erpm_s = accel_rad_s2 * 60.0 / (10.0 * 2.0 * math.pi)
+        # Acceleration is specified in electrical RPM/s^2, matching the speed units
+        # noted in the AK driver manual (no extra 0.1 scaling here; driver handles
+        # 0.1 ERPM step internally when encoding the CAN packet).
+        accel_erpm_s2 = accel_rad_s2 * 60.0 / (2.0 * math.pi)
         for motor_id in targets:
-            self.send_servo_cmd(motor_id, 6, position_deg, erpm, accel_erpm_s)
+            self.send_servo_cmd(motor_id, 6, position_deg, erpm, accel_erpm_s2)
 
     def send_idle(self, targets: Iterable[int]) -> None:
         for motor_id in targets:
