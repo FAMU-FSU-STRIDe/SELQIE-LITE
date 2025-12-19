@@ -176,11 +176,11 @@ class BeuhlerClock:
     # ---- core math ---------------------------------------------------
     def _calc_omega_slow_deg_s(self, f_abs: float, alpha: float, slow_band_deg: float) -> float:
         t_slow = alpha / (f_abs * (alpha + 1.0))
-        return (360.0 - slow_band_deg) / t_slow
+        return slow_band_deg / t_slow
 
     def _calc_omega_fast_deg_s(self, f_abs: float, alpha: float, slow_band_deg: float) -> float:
         t_fast = 1.0 / (f_abs * (alpha + 1.0))
-        return slow_band_deg / t_fast
+        return (360.0 - slow_band_deg) / t_fast
 
     def _region_speed_deg_s(self, theta_deg: float, f_hz: float, slow_band_deg: float, alpha: float) -> float:
         if f_hz == 0.0:
