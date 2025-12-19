@@ -114,6 +114,10 @@ class MotorConsole(Node):
         for motor_id in targets:
             self.send_servo_cmd(motor_id, 3, erpm)
 
+    def send_brake_current(self, targets: Iterable[int], current_a: float) -> None:
+        for motor_id in targets:
+            self.send_servo_cmd(motor_id, 2, current_a)
+
     def snapshot_states(self) -> dict[int, MotorState]:
         with self._lock:
             return dict(self._state_cache)
@@ -492,6 +496,23 @@ class SELQIE:
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_idle(targets)
+
+    def brake_current(self, line: str) -> None:
+        parts = line.split()
+        if not parts:
+            print('Usage: brake <current_a> [motor_id|all]')
+            return
+
+        try:
+            current_a = float(parts[0])
+        except ValueError:
+            print('Brake current must be numeric (amps)')
+            return
+
+        target_text = parts[1] if len(parts) > 1 else ''
+        targets = self._parse_targets(target_text, default_all=True)
+        if targets:
+            self._console.send_brake_current(targets, current_a)
 
     # ---- inspection ---------------------------------------------------
     def status(self, line: str) -> None:
