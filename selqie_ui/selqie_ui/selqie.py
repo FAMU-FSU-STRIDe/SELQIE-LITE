@@ -371,6 +371,51 @@ class SwimGait:
             time.sleep(1.0 / self.control_hz)
 
 
+class StandHold:
+    """Continuously command all legs to a fixed zero pose."""
+
+    def __init__(self, console: MotorConsole):
+        self._console = console
+        self.control_hz = 50.0
+        self.position_deg = 0.0
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._cfg_lock = threading.Lock()
+
+    def _apply_config(self, *, position_deg: float | None = None) -> None:
+        with self._cfg_lock:
+            if position_deg is not None:
+                self.position_deg = position_deg
+
+    def start(self, *, position_deg: float | None = None) -> None:
+        self._apply_config(position_deg=position_deg)
+        if self._thread and self._thread.is_alive():
+            return
+
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join(timeout=1.0)
+        self._thread = None
+
+    def is_running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            with self._cfg_lock:
+                position = self.position_deg
+
+            for motor_id in MotorConsole.MOTOR_IDS:
+                self._console.send_position((motor_id,), position)
+
+            time.sleep(1.0 / self.control_hz)
+
+
 class SELQIE:
     """Shared SELQIE motor control behaviors."""
 
@@ -381,6 +426,7 @@ class SELQIE:
         self._console = MotorConsole()
         self._beuhler = BeuhlerClock(self._console)
         self._swim = SwimGait(self._console)
+        self._stand = StandHold(self._console)
 
     # ---- helpers ------------------------------------------------------
     def _parse_targets(self, text: str, default_all: bool = False) -> List[int]:
@@ -408,33 +454,43 @@ class SELQIE:
         print('Exiting...')
         self._beuhler.stop()
         self._swim.stop()
+        self._stand.stop()
         self._console.shutdown()
         if rclpy.ok():
             rclpy.shutdown()
         return True
 
     # ---- special commands --------------------------------------------
+    def _stop_stand(self) -> None:
+        if self._stand.is_running():
+            self._stand.stop()
+
     def start_motors(self, line: str) -> None:
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_special('start', targets)
 
     def stop_motors(self, line: str) -> None:
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_special('exit', targets)
 
     def zero_motors(self, line: str) -> None:
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_special('zero', targets)
 
     def clear(self, line: str) -> None:
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_special('clear', targets)
 
     def beuhler(self, line: str) -> None:
+        self._stop_stand()
         parts = line.split()
         if not parts:
             print('Usage: beuhler stop | <frequency_hz> [slow_band_deg] [alpha]')
@@ -458,10 +514,12 @@ class SELQIE:
             return
 
         self.start_motors('All')
+        self._swim.stop()
         self._beuhler.start(gait_frequency_hz=freq, slow_band_deg=slow_band_deg, alpha=alpha)
         print('Started Beuhler clock with:', freq, slow_band_deg, alpha)
 
     def swim(self, line: str) -> None:
+        self._stop_stand()
         parts = line.split()
         if not parts:
             print('Usage: swim stop | <frequency_hz> [center_angle] [delta_angle]')
@@ -489,15 +547,29 @@ class SELQIE:
             return
 
         self.start_motors('All')
+        self._beuhler.stop()
         self._swim.start(frequency_hz=freq, center_angle=center, delta_angle=delta)
         print('Started swim gait with:', freq, center, delta)
 
+    def stand(self, line: str) -> None:
+        if line.strip():
+            print('Usage: stand')
+            return
+
+        self._beuhler.stop()
+        self._swim.stop()
+        self.start_motors('All')
+        self._stand.start(position_deg=0.0)
+        print('Standing: commanding all legs to zero.')
+
     def idle(self, line: str) -> None:
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
             self._console.send_idle(targets)
 
     def brake_current(self, line: str) -> None:
+        self._stop_stand()
         parts = line.split()
         if not parts:
             print('Usage: brake <current_a> [motor_id|all]')
@@ -516,6 +588,7 @@ class SELQIE:
 
     def snap_zero_multiple(self, line: str) -> None:
         """Snap leg position to the nearest multiple of the zero point."""
+        self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if not targets:
             return
