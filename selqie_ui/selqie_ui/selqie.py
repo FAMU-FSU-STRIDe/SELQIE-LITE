@@ -160,6 +160,7 @@ class BeuhlerClock:
         self.group_offset_deg = 180.0
         self.control_hz = 50.0
         self.max_vel_abs_deg_s = math.degrees(20.0)
+        self.position_limit_deg = 36000.0
 
         # Internal state
         self._theta_a_deg = 0.0
@@ -184,7 +185,8 @@ class BeuhlerClock:
         slow_band_min = -slow_band_deg / 2.0
         slow_band_max = slow_band_deg / 2.0
 
-        if slow_band_min <= _wrap_to_180(theta_deg) <= slow_band_max:
+        phase_deg = _wrap_to_180(theta_deg)
+        if slow_band_min <= phase_deg <= slow_band_max:
             omega_mag = self._calc_omega_slow_deg_s(abs(f_hz), alpha, slow_band_deg)
         else:
             omega_mag = self._calc_omega_fast_deg_s(abs(f_hz), alpha, slow_band_deg)
@@ -243,7 +245,7 @@ class BeuhlerClock:
     def _run(self) -> None:
         control_dt = 1.0 / max(self.control_hz, 1e-6)
         self._theta_a_deg = 0.0
-        self._theta_b_deg = _wrap_to_180(self.group_offset_deg)
+        self._theta_b_deg = self.group_offset_deg
 
         while not self._stop_event.is_set():
             cycle_start = time.monotonic()
@@ -259,11 +261,15 @@ class BeuhlerClock:
             vA = self._region_speed_deg_s(theta_a, f, slow_band_deg, alpha)
             vB = self._region_speed_deg_s(theta_b, f, slow_band_deg, alpha)
 
-            self._theta_a_deg = _wrap_to_180(theta_a + vA / self.control_hz)
-            self._theta_b_deg = _wrap_to_180(theta_b + vB / self.control_hz)
+            self._theta_a_deg = theta_a + vA / self.control_hz
+            self._theta_b_deg = theta_b + vB / self.control_hz
 
-            self._theta_a = theta_a + vA * control_dt
-            self._theta_b = theta_b + vB * control_dt
+            if (
+                abs(self._theta_a_deg) >= self.position_limit_deg
+                or abs(self._theta_b_deg) >= self.position_limit_deg
+            ):
+                self._stop_event.set()
+                break
 
             motorOrder = np.array([1, 4, 2, 3])
 
