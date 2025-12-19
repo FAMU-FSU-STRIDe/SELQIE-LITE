@@ -274,11 +274,9 @@ class BeuhlerClock:
             motorOrder = np.array([1, 4, 2, 3])
 
             for i, motor in enumerate(motorOrder):
-                if i <= 2:
-                    target_pos = self._theta_a_deg
-                else:
-                    target_pos = self._theta_b_deg
-                self._console.send_position((motor,), target_pos)
+                target_pos = self._theta_a_deg if i < 2 else self._theta_b_deg
+                self._console.send_position((int(motor),), target_pos)
+
 
             # Rate-limit the loop to the configured control frequency
             elapsed = time.monotonic() - cycle_start
