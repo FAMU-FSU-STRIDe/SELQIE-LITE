@@ -262,6 +262,9 @@ class BeuhlerClock:
             self._theta_a_deg = _wrap_to_180(theta_a + vA / self.control_hz)
             self._theta_b_deg = _wrap_to_180(theta_b + vB / self.control_hz)
 
+            self._theta_a = theta_a + vA * control_dt
+            self._theta_b = theta_b + vB * control_dt
+
             motorOrder = np.array([1, 4, 2, 3])
 
             for i, motor in enumerate(motorOrder):
