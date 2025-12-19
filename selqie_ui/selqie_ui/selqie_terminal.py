@@ -49,6 +49,10 @@ class SELQIETerminal(SELQIE, Cmd):
         self.swim(line)
 
     # ---- servo commands ----------------------------------------------
+    def do_stand(self, line: str) -> None:
+        """Continuously command all legs to zero. Usage: stand"""
+        self.stand(line)
+
     def do_idle(self, line: str) -> None:
         """Send idle (mode 7). Usage: idle [motor_id|all]"""
         self.idle(line)
