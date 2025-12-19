@@ -57,6 +57,10 @@ class SELQIETerminal(SELQIE, Cmd):
         """Apply braking current (mode 2). Usage: brake <current_a> [motor_id|all]"""
         self.brake_current(line)
 
+    def do_snap(self, line: str) -> None:
+        """Snap to nearest zero multiple. Usage: snap [motor_id|all]"""
+        self.snap_zero_multiple(line)
+
     # ---- inspection ---------------------------------------------------
     def do_status(self, line: str) -> None:
         """Print the latest motor states received."""
