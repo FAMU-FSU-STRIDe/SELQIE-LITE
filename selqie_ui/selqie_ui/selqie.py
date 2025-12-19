@@ -164,7 +164,8 @@ class BeuhlerClock:
         self.max_vel_abs = 20.0
 
         # Internal state
-        self._theta_base = 0.0
+        self._theta_a = 0.0
+        self._theta_b = 0.0
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._cfg_lock = threading.Lock()
@@ -242,7 +243,8 @@ class BeuhlerClock:
             return
 
         self._stop_event.clear()
-        self._theta_base = 0.0
+        self._theta_a = 0.0
+        self._theta_b = 0.0
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -258,8 +260,8 @@ class BeuhlerClock:
     # ---- runner ------------------------------------------------------
     def _run(self) -> None:
         control_dt = 1.0 / max(self.control_hz, 1e-6)
-        last_feedback_theta = self._feedback_theta(2)
-        cur_feedback_theta = last_feedback_theta
+        self._theta_a = self._feedback_theta(2)
+        self._theta_b = self._theta_a + math.radians(self.group_offset_deg)
 
         while not self._stop_event.is_set():
             cycle_start = time.monotonic()
@@ -269,31 +271,23 @@ class BeuhlerClock:
                 slow_band_deg = self.slow_band_deg
 
             f = gait_frequency_hz
-
-            # For now, going to trust that none of the motors slip, so we can rely on one reading alone
-            trustworthy_motor = 2
-            cur_feedback_theta = self._feedback_theta(trustworthy_motor)
-            d_theta = _wrap_to_pi(cur_feedback_theta - last_feedback_theta)
-
-            # Add the change in angle to the base
-            self._theta_base += d_theta
-
-            last_feedback_theta = cur_feedback_theta
-
-            theta_a = self._theta_base
-            theta_b = self._theta_base + math.radians(self.group_offset_deg)
+            theta_a = self._theta_a
+            theta_b = self._theta_b
 
             vA = self._region_speed(theta_a, f, slow_band_deg, alpha)
             vB = self._region_speed(theta_b, f, slow_band_deg, alpha)
+
+            self._theta_a = theta_a + vA * control_dt
+            self._theta_b = theta_b + vB * control_dt
 
             motorOrder = np.array([1, 4, 2, 3])
 
             for i, motor in enumerate(motorOrder):
                 if i <= 2:
-                    curV = vA
+                    target_pos = self._theta_a
                 else:
-                    curV = vB
-                self._console.send_velocity((motor,), curV, kp=self.kp, kd=self.kd)
+                    target_pos = self._theta_b
+                self._console.send_position((motor,), target_pos)
 
             # Rate-limit the loop to the configured control frequency
             elapsed = time.monotonic() - cycle_start

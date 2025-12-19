@@ -30,7 +30,7 @@ class SELQIETerminal(SELQIE, Cmd):
         self.clear(line)
 
     def do_beuhler(self, line: str) -> None:
-        """Start or stop the Beuhler clock pattern.
+        """Start or stop the position-controlled Beuhler clock pattern.
 
         Usage:
           beuhler stop
