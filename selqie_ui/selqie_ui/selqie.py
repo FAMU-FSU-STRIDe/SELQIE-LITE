@@ -136,8 +136,8 @@ class MotorConsole(Node):
 #######################################################
 
 ## Helper Functions
-def _wrap_to_pi(x: float) -> float:
-    return (x + math.pi) % (2.0 * math.pi) - math.pi
+def _wrap_to_180(x_deg: float) -> float:
+    return (x_deg + 180.0) % 360.0 - 180.0
 
 
 def _sgn(x: float) -> float:
@@ -146,7 +146,7 @@ def _sgn(x: float) -> float:
 
 ## Beuhler Class
 class BeuhlerClock:
-    """Threaded implementation of the Beuhler clock velocity pattern."""
+    """Threaded implementation of the Beuhler clock position pattern."""
 
     def __init__(self, console: MotorConsole):
         self._console = console
@@ -159,56 +159,38 @@ class BeuhlerClock:
         # Constants
         self.group_offset_deg = 180.0
         self.control_hz = 50.0
-        self.kp = 0.0
-        self.kd = 1.0
-        self.max_vel_abs = 20.0
+        self.max_vel_abs_deg_s = math.degrees(20.0)
 
         # Internal state
-        self._theta_a = 0.0
-        self._theta_b = 0.0
+        self._theta_a_deg = 0.0
+        self._theta_b_deg = 0.0
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._cfg_lock = threading.Lock()
 
     # ---- core math ---------------------------------------------------
-    def _calcOmegaSlow(self, f_abs: float, alpha: float) -> float:
-        t = alpha/(f_abs * (alpha + 1))
-        omegaSlow = (2* math.pi - math.radians(self.slow_band_deg)) / t
-        return (omegaSlow)
+    def _calc_omega_slow_deg_s(self, f_abs: float, alpha: float, slow_band_deg: float) -> float:
+        t_slow = alpha / (f_abs * (alpha + 1.0))
+        return (360.0 - slow_band_deg) / t_slow
 
-    def _calcOmegaFast(self, f_abs: float, alpha: float) -> float:
-        t = 1/(f_abs * (alpha + 1))
-        omegaFast = math.radians(self.slow_band_deg) / t
-        return (omegaFast)
+    def _calc_omega_fast_deg_s(self, f_abs: float, alpha: float, slow_band_deg: float) -> float:
+        t_fast = 1.0 / (f_abs * (alpha + 1.0))
+        return slow_band_deg / t_fast
 
-    def _feedback_theta(self, motor: int) -> float:
-        """Return the latest measured leg angle (rad) if available."""
-
-        # Users report `/motor2/current_state` publishes the relative encoder
-        # angle; we read motor 2 by default but keep the method general in case
-        # we want to make the source configurable later.
-        state = self._console.snapshot_states().get(motor)
-        if state is None:
-            return 0.0
-            # return None
-        return _wrap_to_pi(float(state.position))
-
-    def _region_speed(self, theta: float, f_hz: float, slow_band_deg: float, alpha: float) -> float:
+    def _region_speed_deg_s(self, theta_deg: float, f_hz: float, slow_band_deg: float, alpha: float) -> float:
         if f_hz == 0.0:
             return 0.0
 
-        slow_band_min = - slow_band_deg / 2
-        slow_band_max =  slow_band_deg / 2
+        slow_band_min = -slow_band_deg / 2.0
+        slow_band_max = slow_band_deg / 2.0
 
-        if ( _wrap_to_pi(theta) <= math.radians(slow_band_max)) and ( _wrap_to_pi(theta) >= math.radians(slow_band_min)):
-            omega_mag = self._calcOmegaSlow(abs(f_hz), alpha)
+        if slow_band_min <= _wrap_to_180(theta_deg) <= slow_band_max:
+            omega_mag = self._calc_omega_slow_deg_s(abs(f_hz), alpha, slow_band_deg)
         else:
-            omega_mag = self._calcOmegaFast(abs(f_hz), alpha)
+            omega_mag = self._calc_omega_fast_deg_s(abs(f_hz), alpha, slow_band_deg)
 
-        if omega_mag <= self.max_vel_abs:
-            return _sgn(f_hz) * omega_mag
-        else:
-            return _sgn(f_hz) * self.max_vel_abs
+        omega_mag = min(omega_mag, self.max_vel_abs_deg_s)
+        return _sgn(f_hz) * omega_mag
 
     # ---- lifecycle ---------------------------------------------------
     def _apply_config(
@@ -243,8 +225,8 @@ class BeuhlerClock:
             return
 
         self._stop_event.clear()
-        self._theta_a = 0.0
-        self._theta_b = 0.0
+        self._theta_a_deg = 0.0
+        self._theta_b_deg = 0.0
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -260,8 +242,8 @@ class BeuhlerClock:
     # ---- runner ------------------------------------------------------
     def _run(self) -> None:
         control_dt = 1.0 / max(self.control_hz, 1e-6)
-        self._theta_a = self._feedback_theta(2)
-        self._theta_b = self._theta_a + math.radians(self.group_offset_deg)
+        self._theta_a_deg = 0.0
+        self._theta_b_deg = _wrap_to_180(self.group_offset_deg)
 
         while not self._stop_event.is_set():
             cycle_start = time.monotonic()
@@ -271,11 +253,14 @@ class BeuhlerClock:
                 slow_band_deg = self.slow_band_deg
 
             f = gait_frequency_hz
-            theta_a = self._theta_a
-            theta_b = self._theta_b
+            theta_a = self._theta_a_deg
+            theta_b = self._theta_b_deg
 
-            vA = self._region_speed(theta_a, f, slow_band_deg, alpha)
-            vB = self._region_speed(theta_b, f, slow_band_deg, alpha)
+            vA = self._region_speed_deg_s(theta_a, f, slow_band_deg, alpha)
+            vB = self._region_speed_deg_s(theta_b, f, slow_band_deg, alpha)
+
+            self._theta_a_deg = _wrap_to_180(theta_a + vA / self.control_hz)
+            self._theta_b_deg = _wrap_to_180(theta_b + vB / self.control_hz)
 
             self._theta_a = theta_a + vA * control_dt
             self._theta_b = theta_b + vB * control_dt
@@ -284,9 +269,9 @@ class BeuhlerClock:
 
             for i, motor in enumerate(motorOrder):
                 if i <= 2:
-                    target_pos = self._theta_a
+                    target_pos = self._theta_a_deg
                 else:
-                    target_pos = self._theta_b
+                    target_pos = self._theta_b_deg
                 self._console.send_position((motor,), target_pos)
 
             # Rate-limit the loop to the configured control frequency

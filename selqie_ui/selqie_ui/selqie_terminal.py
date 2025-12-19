@@ -34,7 +34,7 @@ class SELQIETerminal(SELQIE, Cmd):
 
         Usage:
           beuhler stop
-          beuhler <frequency_hz> [group_offset_deg] [alpha]
+          beuhler <frequency_hz> [slow_band_deg] [alpha]
         """
 
         self.beuhler(line)
