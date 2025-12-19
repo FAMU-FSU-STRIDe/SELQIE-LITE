@@ -514,6 +514,28 @@ class SELQIE:
         if targets:
             self._console.send_brake_current(targets, current_a)
 
+    def snap_zero_multiple(self, line: str) -> None:
+        """Snap leg position to the nearest multiple of the zero point."""
+        targets = self._parse_targets(line, default_all=True)
+        if not targets:
+            return
+
+        states = self._console.snapshot_states()
+        missing = [motor_id for motor_id in targets if motor_id not in states]
+        for motor_id in missing:
+            print(f'No state received yet for motor{motor_id}')
+
+        for motor_id in targets:
+            state = states.get(motor_id)
+            if not state:
+                continue
+            current_deg = math.degrees(state.position)
+            target_deg = 360.0 * round(current_deg / 360.0)
+            self._console.send_position((motor_id,), target_deg)
+            print(
+                f'motor{motor_id}: current={current_deg:.2f} deg -> target={target_deg:.2f} deg'
+            )
+
     # ---- inspection ---------------------------------------------------
     def status(self, line: str) -> None:
         states = self._console.snapshot_states()
