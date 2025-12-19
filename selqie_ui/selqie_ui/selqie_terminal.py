@@ -53,6 +53,10 @@ class SELQIETerminal(SELQIE, Cmd):
         """Send idle (mode 7). Usage: idle [motor_id|all]"""
         self.idle(line)
 
+    def do_brake(self, line: str) -> None:
+        """Apply braking current (mode 2). Usage: brake <current_a> [motor_id|all]"""
+        self.brake_current(line)
+
     # ---- inspection ---------------------------------------------------
     def do_status(self, line: str) -> None:
         """Print the latest motor states received."""
