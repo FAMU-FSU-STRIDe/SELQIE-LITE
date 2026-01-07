@@ -603,7 +603,13 @@ class SELQIE:
             if not state:
                 continue
             current_deg = math.degrees(state.position)
-            target_deg = 360.0 * round(current_deg / 360.0)
+            k_floor = math.floor(current_deg / 360.0)
+            k_ceil  = k_floor + 1
+
+            cand0 = 360.0 * k_floor
+            cand1 = 360.0 * k_ceil
+
+            target_deg = cand0 if abs(current_deg - cand0) <= abs(current_deg - cand1) else cand1
             self._console.send_position((motor_id,), target_deg)
             print(
                 f'motor{motor_id}: current={current_deg:.2f} deg -> target={target_deg:.2f} deg'

@@ -17,9 +17,9 @@ class LeakSensorNode(Node):
     def __init__(self):
         super().__init__("leak_sensor")
 
-        self.declare_parameter("gpio_pin", 18)
+        self.declare_parameter("gpio_pin", 33)
         self.declare_parameter("gpio_mode", "BOARD")
-        self.declare_parameter("pull", "DOWN")
+        self.declare_parameter("pull", "NONE")
         self.declare_parameter("active_high", True)
         self.declare_parameter("poll_hz", 10.0)
 
@@ -44,19 +44,14 @@ class LeakSensorNode(Node):
         else:
             pull_cfg = GPIO.PUD_DOWN
 
-        GPIO.setup(self.pin, GPIO.IN, pull_up_down=pull_cfg)
+        GPIO.setup(self.pin, GPIO.IN)
 
         self.publisher_ = self.create_publisher(Bool, "leak_detected", 10)
         self.last_state = None
         self.create_timer(self.poll_period, self._poll_sensor)
 
-        self.get_logger().info(
-            "Leak sensor node monitoring %s (active_high=%s, poll_hz=%.2f, pull=%s)",
-            pin_label,
-            self.active_high,
-            poll_hz,
-            pull_param,
-        )
+        self.get_logger().info(f"Leak sensor on {pin_label} (pin={self.pin})")
+
 
     def _poll_sensor(self):
         raw_level = bool(GPIO.input(self.pin))
@@ -70,11 +65,9 @@ class LeakSensorNode(Node):
             leak_text = "LEAK" if leak_state else "clear"
             raw_text = "HIGH" if raw_level else "LOW"
             self.get_logger().info(
-                "Leak sensor state changed: %s (raw=%s, active_high=%s)",
-                leak_text,
-                raw_text,
-                self.active_high,
+                f"Leak sensor state changed: {leak_text} (raw={raw_text}, active_high={self.active_high})"
             )
+
 
         self.last_state = leak_state
 
