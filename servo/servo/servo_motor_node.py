@@ -240,7 +240,7 @@ class ServoMotorNode(Node):
             pos_rad = (pos_deg * 3.141592653589793 / 180.0)
             # speed: ERPM -> rad/s (electrical rpm -> mechanical depends on pole pairs; we expose ERPM as-is scaled to rad/s via rpm)
             # Treat ERPM as rpm here; user can set pole-pair scaling externally if needed.
-            vel_rads = (spd_erpm * 2.0 * 3.141592653589793 / 60.0)
+            vel_rads = (spd_erpm * 2.0 * 3.141592653589793 / (60.0 * 14))
 
             err_msg = String()
             err_msg.data = f"Error Code {st.error}: {ERROR_CODES.get(st.error, 'Unknown error')}"
@@ -249,7 +249,7 @@ class ServoMotorNode(Node):
             ms = MotorState()
             ms.name = self.joint_name
             ms.position = pos_rad
-            ms.abs_position = pos_rad  # servo mode reply doesn't wrap the same way; keep equal
+            ms.abs_position = pos_deg  # servo mode reply doesn't wrap the same way; keep equal
             ms.velocity = vel_rads
             ms.current = cur_a
             ms.torque = cur_a / TORQUE_CONSTANTS[self.motor_type]

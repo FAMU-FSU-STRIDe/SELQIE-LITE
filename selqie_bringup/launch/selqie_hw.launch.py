@@ -1,42 +1,27 @@
+import os
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from ament_index_python.packages import get_package_share_directory
 
+MOTOR_LAUNCH_FILE = os.path.join(
+        get_package_share_directory('servo'), 'launch', 'servo_motor.launch.py')
+
+LEAK_SENSOR_LAUNCH_FILE = os.path.join(
+        get_package_share_directory('leak_sensor'), 'launch', 'leak_sensor.launch.py')
+        
+LED_LAUNCH_FILE = os.path.join(
+        get_package_share_directory('led'), 'launch', 'led_demo.launch.py')
 
 def generate_launch_description():
-    """Bring up SELQIE hardware: four motors using servo control."""
-
-    params_common = {
-        'can_interface': 'can0',
-        'motor_type': 'AK40-10',
-        'control_hz': 50.0,
-        'auto_start': True,
-        'reverse_polarity': False,
-    }
-
     return LaunchDescription([
-        # --- Four Motor Nodes ---
-        Node(
-            package='servo',
-            executable='servo_motor_node',
-            name='servo_motor1',
-            parameters=[{**params_common, 'can_id': 1, 'joint_name': 'motor1', 'reverse_polarity': True}],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(MOTOR_LAUNCH_FILE)
         ),
-        Node(
-            package='servo',
-            executable='servo_motor_node',
-            name='servo_motor2',
-            parameters=[{**params_common, 'can_id': 2, 'joint_name': 'motor2'}],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(LEAK_SENSOR_LAUNCH_FILE)
         ),
-        Node(
-            package='servo',
-            executable='servo_motor_node',
-            name='servo_motor3',
-            parameters=[{**params_common, 'can_id': 3, 'joint_name': 'motor3', 'reverse_polarity': True}],
-        ),
-        Node(
-            package='servo',
-            executable='servo_motor_node',
-            name='servo_motor4',
-            parameters=[{**params_common, 'can_id': 4, 'joint_name': 'motor4'}],
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(LED_LAUNCH_FILE)
         ),
     ])

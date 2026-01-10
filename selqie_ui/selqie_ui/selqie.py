@@ -288,7 +288,6 @@ class BeuhlerClock:
             if sleep_time > 0:
                 time.sleep(sleep_time)
 
-
 class SwimGait:
     """Synchronized oscillatory position control gait for all legs."""
 
@@ -626,7 +625,7 @@ class SELQIE:
             state = states[motor_id]
             print(
                 f"motor{motor_id}: pos={state.position:.3f} rad, "
-                f"abs={state.abs_position:.3f} rad, vel={state.velocity:.3f} rad/s, "
+                f"abs={state.abs_position:.3f} deg, vel={state.velocity:.3f} rad/s, "
                 f"torque={state.torque:.3f} Nm, current={state.current:.3f} A, "
                 f"temp={state.temperature} C"
             )

@@ -69,7 +69,7 @@ class SELQIETerminal(SELQIE, Cmd):
     def do_status(self, line: str) -> None:
         """Print the latest motor states received."""
         self.status(line)
-
+        
     def do_errors(self, line: str) -> None:
         """Print the latest error strings from each motor."""
         self.errors(line)
