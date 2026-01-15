@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""ROS 2 node to drive a Hitec D954SW servo via Linux PWM sysfs."""
+"""ROS 2 node to drive a Hitec D954SW servo via Jetson.GPIO PWM."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Optional
 
+import Jetson.GPIO as GPIO
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import Bool, Float64
@@ -19,41 +19,71 @@ class ServoLimits:
     max_angle_deg: float
 
 
-class PwmSysfs:
-    def __init__(self, chip: int, channel: int, logger):
-        self.chip = int(chip)
-        self.channel = int(channel)
+class PwmGpio:
+    def __init__(self, pin: int, mode: str, period_us: int, logger):
+        self.pin = int(pin)
+        self.mode = mode
+        self.period_us = int(period_us)
         self.logger = logger
-        self.base = Path(f"/sys/class/pwm/pwmchip{self.chip}")
-        self.channel_path = self.base / f"pwm{self.channel}"
+        self._pwm = None
+        self._running = False
 
-    def _write(self, path: Path, value: str) -> None:
-        path.write_text(value)
+    def _set_mode(self) -> None:
+        mode_upper = self.mode.upper()
+        if mode_upper == "BOARD":
+            GPIO.setmode(GPIO.BOARD)
+        elif mode_upper == "BCM":
+            GPIO.setmode(GPIO.BCM)
+        elif mode_upper == "CVM":
+            GPIO.setmode(GPIO.CVM)
+        elif mode_upper == "TEGRA_SOC":
+            GPIO.setmode(GPIO.TEGRA_SOC)
+        else:
+            raise ValueError(f"Unsupported gpio_mode '{self.mode}'. Use BOARD, BCM, CVM, or TEGRA_SOC.")
 
-    def ensure_exported(self) -> None:
-        if self.channel_path.exists():
-            return
-        if not self.base.exists():
-            raise FileNotFoundError(f"PWM chip path not found: {self.base}")
-        self.logger.info(f"Exporting PWM channel {self.channel} on chip {self.chip}")
-        (self.base / "export").write_text(str(self.channel))
+    def setup(self) -> None:
+        self._set_mode()
+        GPIO.setup(self.pin, GPIO.OUT)
+        frequency_hz = 1_000_000.0 / float(self.period_us)
+        self._pwm = GPIO.PWM(self.pin, frequency_hz)
+        self.logger.info(f"Initialized PWM on GPIO pin {self.pin} at {frequency_hz:.2f} Hz")
 
-    def set_period_ns(self, period_ns: int) -> None:
-        self._write(self.channel_path / "period", str(int(period_ns)))
+    def start(self, duty_cycle_percent: float) -> None:
+        if self._pwm is None:
+            self.setup()
+        if not self._running:
+            self._pwm.start(duty_cycle_percent)
+            self._running = True
+        else:
+            self._pwm.ChangeDutyCycle(duty_cycle_percent)
 
-    def set_duty_cycle_ns(self, duty_ns: int) -> None:
-        self._write(self.channel_path / "duty_cycle", str(int(duty_ns)))
+    def change_duty_cycle(self, duty_cycle_percent: float) -> None:
+        if self._pwm is None:
+            self.setup()
+        if self._running:
+            self._pwm.ChangeDutyCycle(duty_cycle_percent)
+        else:
+            self._pwm.start(duty_cycle_percent)
+            self._running = True
 
-    def set_enabled(self, enabled: bool) -> None:
-        self._write(self.channel_path / "enable", "1" if enabled else "0")
+    def stop(self) -> None:
+        if self._pwm is not None and self._running:
+            self._pwm.stop()
+            self._running = False
+
+    def cleanup(self) -> None:
+        try:
+            self.stop()
+        finally:
+            GPIO.cleanup(self.pin)
 
 
 class LatchNode(Node):
     def __init__(self) -> None:
         super().__init__("latch_node")
 
-        self.declare_parameter("pwm_chip", 0)
-        self.declare_parameter("pwm_channel", 0)
+        self.declare_parameter("gpio_pin", 33)
+        self.declare_parameter("gpio_mode", "BOARD")
         self.declare_parameter("period_us", 20000)
         self.declare_parameter("min_pulse_us", 1000)
         self.declare_parameter("max_pulse_us", 2000)
@@ -63,8 +93,8 @@ class LatchNode(Node):
         self.declare_parameter("auto_enable", True)
         self.declare_parameter("startup_angle_deg", 90.0)
 
-        self.pwm_chip = int(self.get_parameter("pwm_chip").value)
-        self.pwm_channel = int(self.get_parameter("pwm_channel").value)
+        self.gpio_pin = int(self.get_parameter("gpio_pin").value)
+        self.gpio_mode = str(self.get_parameter("gpio_mode").value)
         self.period_us = int(self.get_parameter("period_us").value)
         self.neutral_angle_deg = float(self.get_parameter("neutral_angle_deg").value)
         self.auto_enable = bool(self.get_parameter("auto_enable").value)
@@ -77,12 +107,8 @@ class LatchNode(Node):
             max_angle_deg=float(self.get_parameter("max_angle_deg").value),
         )
 
-        self.pwm = PwmSysfs(self.pwm_chip, self.pwm_channel, self.get_logger())
-        self.pwm.ensure_exported()
-        self.pwm.set_period_ns(self.period_us * 1000)
-
-        if self.auto_enable:
-            self.pwm.set_enabled(True)
+        self.pwm = PwmGpio(self.gpio_pin, self.gpio_mode, self.period_us, self.get_logger())
+        self.pwm.setup()
 
         self._current_pulse_us: Optional[int] = None
 
@@ -92,8 +118,8 @@ class LatchNode(Node):
 
         self.get_logger().info(
             "Latch PWM node ready:\n"
-            f"  pwm_chip: {self.pwm_chip}\n"
-            f"  pwm_channel: {self.pwm_channel}\n"
+            f"  gpio_pin: {self.gpio_pin}\n"
+            f"  gpio_mode: {self.gpio_mode}\n"
             f"  period_us: {self.period_us}\n"
             f"  min_pulse_us: {self.limits.min_pulse_us}\n"
             f"  max_pulse_us: {self.limits.max_pulse_us}\n"
@@ -104,6 +130,9 @@ class LatchNode(Node):
         )
 
         self.set_angle(self.startup_angle_deg)
+
+        if self.auto_enable and self._current_pulse_us is not None:
+            self.pwm.start(self.pulse_to_duty_cycle(self._current_pulse_us))
 
     def clamp(self, value: float, min_value: float, max_value: float) -> float:
         return max(min_value, min(max_value, value))
@@ -117,12 +146,16 @@ class LatchNode(Node):
         pulse = self.limits.min_pulse_us + ratio * (self.limits.max_pulse_us - self.limits.min_pulse_us)
         return int(round(pulse))
 
+    def pulse_to_duty_cycle(self, pulse_us: int) -> float:
+        return (float(pulse_us) / float(self.period_us)) * 100.0
+
     def set_pulse_us(self, pulse_us: int) -> None:
         pulse_us = int(self.clamp(pulse_us, self.limits.min_pulse_us, self.limits.max_pulse_us))
-        duty_ns = pulse_us * 1000
-        self.pwm.set_duty_cycle_ns(duty_ns)
         self._current_pulse_us = pulse_us
-        self.get_logger().debug(f"Set pulse to {pulse_us} us")
+        duty_cycle = self.pulse_to_duty_cycle(pulse_us)
+        if self.auto_enable:
+            self.pwm.change_duty_cycle(duty_cycle)
+        self.get_logger().debug(f"Set pulse to {pulse_us} us ({duty_cycle:.2f}% duty)")
 
     def set_angle(self, angle_deg: float) -> None:
         pulse_us = self.angle_to_pulse_us(angle_deg)
@@ -143,8 +176,15 @@ class LatchNode(Node):
 
     def on_enable_cmd(self, msg: Bool) -> None:
         try:
-            self.pwm.set_enabled(bool(msg.data))
-            self.get_logger().info(f"PWM enable set to {msg.data}")
+            enable = bool(msg.data)
+            if enable:
+                if self._current_pulse_us is None:
+                    self.set_angle(self.neutral_angle_deg)
+                duty_cycle = self.pulse_to_duty_cycle(self._current_pulse_us or self.limits.min_pulse_us)
+                self.pwm.start(duty_cycle)
+            else:
+                self.pwm.stop()
+            self.get_logger().info(f"PWM enable set to {enable}")
         except Exception as exc:
             self.get_logger().error(f"Failed to set enable: {exc}")
 
@@ -152,8 +192,8 @@ class LatchNode(Node):
         try:
             if self._current_pulse_us is not None:
                 self.set_angle(self.neutral_angle_deg)
-            if self.auto_enable:
-                self.pwm.set_enabled(False)
+            self.pwm.stop()
+            self.pwm.cleanup()
         except Exception:
             pass
         super().destroy_node()

@@ -15,6 +15,7 @@ setup(
         'setuptools',
         'rclpy',
         'std_msgs',
+        'Jetson.GPIO',
     ],
     zip_safe=True,
     maintainer='SELQIE',

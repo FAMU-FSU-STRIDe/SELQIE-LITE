@@ -12,8 +12,8 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "pwm_chip": 0,
-                        "pwm_channel": 0,
+                        "gpio_pin": 33,
+                        "gpio_mode": "BOARD",
                         "period_us": 20000,
                         "min_pulse_us": 1000,
                         "max_pulse_us": 2000,

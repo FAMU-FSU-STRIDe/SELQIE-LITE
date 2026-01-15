@@ -1,7 +1,8 @@
 # latch
 
-ROS 2 PWM driver package for the Hitec D954SW R/C servo motor. The node writes to the
-Linux PWM sysfs interface and exposes topics for angle, pulse width, and enable control.
+ROS 2 PWM driver package for the Hitec D954SW R/C servo motor. The node uses
+Jetson.GPIO to drive a GPIO pin with a PWM signal and exposes topics for angle,
+pulse width, and enable control.
 
 ## Topics
 
@@ -11,8 +12,8 @@ Linux PWM sysfs interface and exposes topics for angle, pulse width, and enable 
 
 ## Parameters
 
-- `pwm_chip` (int, default: 0)
-- `pwm_channel` (int, default: 0)
+- `gpio_pin` (int, default: 33)
+- `gpio_mode` (string, default: `BOARD`)
 - `period_us` (int, default: 20000)
 - `min_pulse_us` (int, default: 1000)
 - `max_pulse_us` (int, default: 2000)
