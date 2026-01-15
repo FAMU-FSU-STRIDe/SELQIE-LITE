@@ -295,8 +295,8 @@ class ServoMotorNode(Node):
                 self.get_logger().info(f"Stopping {self.joint_name} (servo power_off)")
         elif m == "zero":
             # In servo mode, use ORIGIN packet with mode=1 (permanent) by default
-            self._send_set_origin(1)
-            self.get_logger().info(f"Zeroing {self.joint_name} via set_origin=1")
+            self._send_set_origin(0)
+            self.get_logger().info(f"Zeroing {self.joint_name} via set_origin=0")
         elif m == "clear":
             with self._lock:
                 self.cmd = [float(7), 0.0, 0.0, 0.0]

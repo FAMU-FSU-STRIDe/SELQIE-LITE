@@ -197,6 +197,9 @@ class BeuhlerClock:
 
         omega_mag = min(omega_mag, self.max_vel_abs_deg_s)
         return _sgn(f_hz) * omega_mag
+        
+	def _nearest_relative_zero_deg(self, pos_deg: float) -> float:
+    	return 360.0 * round(pos_deg / 360.0)
 
     # ---- lifecycle ---------------------------------------------------
     def _apply_config(
@@ -237,10 +240,23 @@ class BeuhlerClock:
         self._thread.start()
 
     def stop(self) -> None:
-        self._stop_event.set()
-        if self._thread:
-            self._thread.join(timeout=1.0)
-        self._thread = None
+    	# Stop the gait thread
+    	self._stop_event.set()
+    	if self._thread:
+        	self._thread.join(timeout=1.0)
+    	self._thread = None
+
+    	# Snap each leg to its nearest relative zero (nearest multiple of 360 deg)
+    	theta_a = self._theta_a_deg
+    	theta_b = self._theta_b_deg
+
+    	motorOrder = np.array([1, 4, 2, 3])
+
+    	for i, motor in enumerate(motorOrder):
+        	pos = theta_a if i < 2 else theta_b
+        	target_zero = self._nearest_relative_zero_deg(pos)
+        	self._console.send_position((int(motor),), target_zero)
+
 
     def is_running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
@@ -473,8 +489,8 @@ class SELQIE:
     def stop_motors(self, line: str) -> None:
         self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
-        if targets:
-            self._console.send_special('exit', targets)
+        #if targets:
+        #    self._console.send_special('exit', targets)
 
     def zero_motors(self, line: str) -> None:
         self._stop_stand()
@@ -610,6 +626,9 @@ class SELQIE:
 
             target_deg = cand0 if abs(current_deg - cand0) <= abs(current_deg - cand1) else cand1
             self._console.send_position((motor_id,), target_deg)
+            self._console.send_special('zero', targets)
+            
+            self._stand.start(position_deg=0.0)
             print(
                 f'motor{motor_id}: current={current_deg:.2f} deg -> target={target_deg:.2f} deg'
             )
