@@ -3,7 +3,7 @@
 <package format="3">
   <name>latch</name>
   <version>0.0.1</version>
-  <description>ROS 2 driver for the Hitec D954SW R/C servo motor</description>
+  <description>ROS 2 PWM driver for the Hitec D954SW R/C servo motor</description>
   <maintainer email="rlk20@fsu.edu">Ryan</maintainer>
   <license>MIT</license>
 
