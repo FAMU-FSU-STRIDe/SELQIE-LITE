@@ -65,6 +65,10 @@ class SELQIETerminal(SELQIE, Cmd):
         """Snap to nearest zero multiple. Usage: snap [motor_id|all]"""
         self.snap_zero_multiple(line)
 
+    def do_latch(self, line: str) -> None:
+        """Command latch servo. Usage: latch open|close"""
+        self.latch(line)
+
     # ---- inspection ---------------------------------------------------
     def do_status(self, line: str) -> None:
         """Print the latest motor states received."""
