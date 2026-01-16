@@ -21,7 +21,7 @@ def generate_launch_description():
                         "max_angle_deg": 180.0,
                         "neutral_angle_deg": 90.0,
                         "auto_enable": True,
-                        "startup_angle_deg": 0.0,
+                        "startup_angle_deg": 90.0,
                     }
                 ],
             )
