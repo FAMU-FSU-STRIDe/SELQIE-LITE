@@ -1,73 +1,57 @@
 #!/usr/bin/env python3
-"""ROS 2 node to drive the latch GPIO for the Hitec D954SW servo."""
+"""ROS 2 node to command a Teensy latch controller over USB serial."""
 from __future__ import annotations
 
-import Jetson.GPIO as GPIO
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Bool
+from std_msgs.msg import Float64
+
+import serial
 
 
 class LatchNode(Node):
     def __init__(self) -> None:
         super().__init__("latch_node")
 
-        self.declare_parameter("gpio_pin", 15)
-        self.declare_parameter("gpio_mode", "BOARD")
-        self.declare_parameter("active_high", True)
+        self.declare_parameter("port", "/dev/ttyACM0")
+        self.declare_parameter("baud", 115200)
+        self.declare_parameter("timeout_s", 0.2)
 
-        self.gpio_pin = int(self.get_parameter("gpio_pin").value)
-        self.gpio_mode = str(self.get_parameter("gpio_mode").value)
-        self.active_high = bool(self.get_parameter("active_high").value)
+        self.port = self.get_parameter("port").get_parameter_value().string_value
+        self.baud = int(self.get_parameter("baud").get_parameter_value().integer_value)
+        self.timeout_s = float(self.get_parameter("timeout_s").get_parameter_value().double_value)
 
-        self._set_mode()
-        GPIO.setup(self.gpio_pin, GPIO.OUT, initial=self._inactive_level())
-
-        self.create_subscription(Bool, "latch_cmd", self.on_latch_cmd, 10)
-
-        self.get_logger().info(
-            "Latch GPIO node ready:\n"
-            f"  gpio_pin: {self.gpio_pin}\n"
-            f"  gpio_mode: {self.gpio_mode}\n"
-            f"  active_high: {self.active_high}"
+        self.ser = serial.Serial(
+            port=self.port,
+            baudrate=self.baud,
+            timeout=self.timeout_s,
+            write_timeout=self.timeout_s,
         )
 
-    def _set_mode(self) -> None:
-        mode_upper = self.gpio_mode.upper()
-        if mode_upper == "BOARD":
-            GPIO.setmode(GPIO.BOARD)
-        elif mode_upper == "BCM":
-            GPIO.setmode(GPIO.BCM)
-        elif mode_upper == "CVM":
-            GPIO.setmode(GPIO.CVM)
-        elif mode_upper == "TEGRA_SOC":
-            GPIO.setmode(GPIO.TEGRA_SOC)
-        else:
-            raise ValueError(
-                f"Unsupported gpio_mode '{self.gpio_mode}'. Use BOARD, BCM, CVM, or TEGRA_SOC."
-            )
+        self.create_subscription(Float64, "latch_angle_cmd", self.on_latch_cmd, 10)
 
-    def _active_level(self) -> int:
-        return GPIO.HIGH if self.active_high else GPIO.LOW
-
-    def _inactive_level(self) -> int:
-        return GPIO.LOW if self.active_high else GPIO.HIGH
-
-    def on_latch_cmd(self, msg: Bool) -> None:
-        level = self._active_level() if bool(msg.data) else self._inactive_level()
-        GPIO.output(self.gpio_pin, level)
         self.get_logger().info(
-            "Latch command: %s (pin %s -> %s)",
-            "open" if msg.data else "close",
-            self.gpio_pin,
-            "HIGH" if level == GPIO.HIGH else "LOW",
+            "Latch serial node ready:\n"
+            f"  port: {self.port}\n"
+            f"  baud: {self.baud}\n"
+            f"  timeout_s: {self.timeout_s}"
         )
+
+    def on_latch_cmd(self, msg: Float64) -> None:
+        angle_deg = float(msg.data)
+        payload = f"ANGLE {angle_deg:.1f}\n".encode("utf-8")
+        try:
+            self.ser.write(payload)
+            self.ser.flush()
+            self.get_logger().info("Sent latch angle %.1f deg", angle_deg)
+        except serial.SerialException as exc:
+            self.get_logger().error(f"Serial write failed: {exc}")
 
     def destroy_node(self) -> None:
         try:
-            GPIO.output(self.gpio_pin, self._inactive_level())
-        finally:
-            GPIO.cleanup(self.gpio_pin)
+            self.ser.close()
+        except Exception:
+            pass
         super().destroy_node()
 
 

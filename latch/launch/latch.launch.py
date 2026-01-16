@@ -12,9 +12,9 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "gpio_pin": 15,
-                        "gpio_mode": "BOARD",
-                        "active_high": True,
+                        "port": "/dev/ttyACM0",
+                        "baud": 115200,
+                        "timeout_s": 0.2,
                     }
                 ],
             )

@@ -15,12 +15,12 @@ setup(
         'setuptools',
         'rclpy',
         'std_msgs',
-        'Jetson.GPIO',
+        'pyserial',
     ],
     zip_safe=True,
     maintainer='SELQIE',
     maintainer_email='',
-    description='PWM driver node for the Hitec D954SW R/C servo motor',
+    description='Serial driver node for the Hitec D954SW latch controller',
     license='MIT',
     entry_points={
         'console_scripts': [
