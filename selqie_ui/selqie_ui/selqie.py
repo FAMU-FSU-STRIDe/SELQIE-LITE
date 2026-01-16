@@ -9,7 +9,7 @@ import numpy as np
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from std_msgs.msg import Float64MultiArray, String
+from std_msgs.msg import Float64, Float64MultiArray, String
 
 from motor_interfaces.msg import MotorState
 
@@ -35,6 +35,7 @@ class MotorConsole(Node):
             )
             for motor_id in self.MOTOR_IDS
         }
+        self._latch_pub = self.create_publisher(Float64, '/angle_cmd', 10)
 
         # Subscriptions (state + error) with local caches for printing
         self._state_cache: dict[int, MotorState] = {}
@@ -125,6 +126,11 @@ class MotorConsole(Node):
     def snapshot_errors(self) -> dict[int, str]:
         with self._lock:
             return dict(self._error_cache)
+
+    def send_latch_angle(self, angle_deg: float) -> None:
+        msg = Float64()
+        msg.data = float(angle_deg)
+        self._latch_pub.publish(msg)
 
     def shutdown(self) -> None:
         if self._shutdown:
@@ -632,6 +638,20 @@ class SELQIE:
             print(
                 f'motor{motor_id}: current={current_deg:.2f} deg -> target={target_deg:.2f} deg'
             )
+
+    def latch(self, line: str) -> None:
+        """Command the latch servo angle. Usage: latch open|close"""
+        command = line.strip().lower()
+        if command == 'open':
+            self._console.send_latch_angle(0.0)
+            print('Latch commanded to 0 degrees (open).')
+            return
+        if command == 'close':
+            self._console.send_latch_angle(180.0)
+            print('Latch commanded to 180 degrees (close).')
+            return
+
+        print('Usage: latch open|close')
 
     # ---- inspection ---------------------------------------------------
     def status(self, line: str) -> None:
