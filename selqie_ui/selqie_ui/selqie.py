@@ -9,7 +9,7 @@ import numpy as np
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from std_msgs.msg import Float64MultiArray, String
+from std_msgs.msg import Float64, Float64MultiArray, String
 
 from motor_interfaces.msg import MotorState
 
@@ -35,6 +35,7 @@ class MotorConsole(Node):
             )
             for motor_id in self.MOTOR_IDS
         }
+        self._latch_pub = self.create_publisher(Float64, '/latch_angle_cmd', 10)
 
         # Subscriptions (state + error) with local caches for printing
         self._state_cache: dict[int, MotorState] = {}
@@ -126,6 +127,11 @@ class MotorConsole(Node):
         with self._lock:
             return dict(self._error_cache)
 
+    def send_latch_angle(self, angle_deg: float) -> None:
+        msg = Float64()
+        msg.data = float(angle_deg)
+        self._latch_pub.publish(msg)
+
     def shutdown(self) -> None:
         if self._shutdown:
             return
@@ -197,9 +203,9 @@ class BeuhlerClock:
 
         omega_mag = min(omega_mag, self.max_vel_abs_deg_s)
         return _sgn(f_hz) * omega_mag
-        
-	def _nearest_relative_zero_deg(self, pos_deg: float) -> float:
-    	return 360.0 * round(pos_deg / 360.0)
+
+    def _nearest_relative_zero_deg(self, pos_deg: float) -> float:
+        return 360.0 * round(pos_deg / 360.0)
 
     # ---- lifecycle ---------------------------------------------------
     def _apply_config(
@@ -240,22 +246,22 @@ class BeuhlerClock:
         self._thread.start()
 
     def stop(self) -> None:
-    	# Stop the gait thread
-    	self._stop_event.set()
-    	if self._thread:
-        	self._thread.join(timeout=1.0)
-    	self._thread = None
+        # Stop the gait thread
+        self._stop_event.set()
+        if self._thread:
+            self._thread.join(timeout=1.0)
+        self._thread = None
 
-    	# Snap each leg to its nearest relative zero (nearest multiple of 360 deg)
-    	theta_a = self._theta_a_deg
-    	theta_b = self._theta_b_deg
+        # Snap each leg to its nearest relative zero (nearest multiple of 360 deg)
+        theta_a = self._theta_a_deg
+        theta_b = self._theta_b_deg
 
-    	motorOrder = np.array([1, 4, 2, 3])
+        motor_order = np.array([1, 4, 2, 3])
 
-    	for i, motor in enumerate(motorOrder):
-        	pos = theta_a if i < 2 else theta_b
-        	target_zero = self._nearest_relative_zero_deg(pos)
-        	self._console.send_position((int(motor),), target_zero)
+        for i, motor in enumerate(motor_order):
+            pos = theta_a if i < 2 else theta_b
+            target_zero = self._nearest_relative_zero_deg(pos)
+            self._console.send_position((int(motor),), target_zero)
 
 
     def is_running(self) -> bool:
@@ -632,6 +638,20 @@ class SELQIE:
             print(
                 f'motor{motor_id}: current={current_deg:.2f} deg -> target={target_deg:.2f} deg'
             )
+
+    def latch(self, line: str) -> None:
+        """Command the latch angle. Usage: latch open|close"""
+        command = line.strip().lower()
+        if command == 'open':
+            self._console.send_latch_angle(0.0)
+            print('Latch commanded open (0 degrees).')
+            return
+        if command == 'close':
+            self._console.send_latch_angle(180.0)
+            print('Latch commanded close (180 degrees).')
+            return
+
+        print('Usage: latch open|close')
 
     # ---- inspection ---------------------------------------------------
     def status(self, line: str) -> None:

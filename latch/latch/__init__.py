@@ -1,0 +1,1 @@
+"""Latch PWM control package."""
