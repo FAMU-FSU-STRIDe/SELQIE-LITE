@@ -12,11 +12,17 @@ LEAK_SENSOR_LAUNCH_FILE = os.path.join(
         
 LED_LAUNCH_FILE = os.path.join(
         get_package_share_directory('led'), 'launch', 'led_demo.launch.py')
+        
+LATCH_LAUNCH_FILE = os.path.join(
+        get_package_share_directory('latch'), 'launch', 'latch.launch.py')
 
 def generate_launch_description():
     return LaunchDescription([
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(MOTOR_LAUNCH_FILE)
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(LATCH_LAUNCH_FILE)
         ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(LEAK_SENSOR_LAUNCH_FILE)

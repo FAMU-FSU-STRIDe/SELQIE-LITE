@@ -4,7 +4,7 @@
   <name>latch</name>
   <version>0.0.1</version>
   <description>ROS 2 serial driver for the Hitec D954SW latch controller</description>
-  <maintainer email="">SELQIE</maintainer>
+  <maintainer email="rlk20@fsu.edu">Ryan</maintainer>
   <license>MIT</license>
 
   <exec_depend>rclpy</exec_depend>
