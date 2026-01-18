@@ -78,6 +78,10 @@ class SELQIETerminal(SELQIE, Cmd):
         """Print the latest error strings from each motor."""
         self.errors(line)
 
+    def do_battery(self, line: str) -> None:
+        """Print the latest battery voltage reading. Usage: battery"""
+        self.battery_voltage(line)
+
 
 def main(argv: List[str] | None = None) -> int:
     rclpy.init(args=argv)

@@ -3,13 +3,13 @@
 import math
 import threading
 import time
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import numpy as np
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from std_msgs.msg import Float64, Float64MultiArray, String
+from std_msgs.msg import Float32, Float64, Float64MultiArray, String
 
 from motor_interfaces.msg import MotorState
 
@@ -40,6 +40,8 @@ class MotorConsole(Node):
         # Subscriptions (state + error) with local caches for printing
         self._state_cache: dict[int, MotorState] = {}
         self._error_cache: dict[int, str] = {}
+        self._battery_voltage: Optional[float] = None
+        self._battery_voltage_stamp: Optional[float] = None
         self._lock = threading.Lock()
 
         for motor_id in self.MOTOR_IDS:
@@ -65,6 +67,13 @@ class MotorConsole(Node):
                 10,
             )
 
+        self.create_subscription(
+            Float32,
+            '/tinybms/pack_voltage',
+            self._on_battery_voltage,
+            10,
+        )
+
         # Background executor
         self._executor = SingleThreadedExecutor()
         self._executor.add_node(self)
@@ -82,6 +91,11 @@ class MotorConsole(Node):
     def _on_error(self, motor_id: int, msg: String) -> None:
         with self._lock:
             self._error_cache[motor_id] = msg.data
+
+    def _on_battery_voltage(self, msg: Float32) -> None:
+        with self._lock:
+            self._battery_voltage = msg.data
+            self._battery_voltage_stamp = time.time()
 
     # ------------------------------------------------------------------
     # Command helpers
@@ -126,6 +140,10 @@ class MotorConsole(Node):
     def snapshot_errors(self) -> dict[int, str]:
         with self._lock:
             return dict(self._error_cache)
+
+    def snapshot_battery_voltage(self) -> tuple[Optional[float], Optional[float]]:
+        with self._lock:
+            return self._battery_voltage, self._battery_voltage_stamp
 
     def send_latch_angle(self, angle_deg: float) -> None:
         msg = Float64()
@@ -677,6 +695,19 @@ class SELQIE:
 
         for motor_id in sorted(errors):
             print(f'motor{motor_id}: {errors[motor_id]}')
+
+    def battery_voltage(self, line: str) -> None:
+        if line.strip():
+            print('Usage: battery')
+            return
+
+        voltage, stamp = self._console.snapshot_battery_voltage()
+        if voltage is None or stamp is None:
+            print('No battery voltage messages received yet.')
+            return
+
+        age_s = time.time() - stamp
+        print(f'Battery voltage: {voltage:.2f} V (age {age_s:.1f}s)')
 
     def shutdown(self) -> None:
         self._console.shutdown()
