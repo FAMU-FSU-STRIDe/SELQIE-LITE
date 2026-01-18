@@ -15,9 +15,17 @@ ORDER_MAP = {
     "BGR": (2, 1, 0),
 }
 
+
 class WS2812B_SPI:
-    def __init__(self, n_leds=2, spi_bus=0, spi_dev=0, spi_hz=2_400_000,
-                 brightness=1.0, pixel_order="GRB"):
+    def __init__(
+        self,
+        n_leds=2,
+        spi_bus=0,
+        spi_dev=0,
+        spi_hz=2_400_000,
+        brightness=1.0,
+        pixel_order="GRB",
+    ):
         self.n = int(n_leds)
         self.brightness = float(brightness)
         self.order = ORDER_MAP.get(str(pixel_order).upper(), ORDER_MAP["GRB"])
@@ -84,4 +92,3 @@ class WS2812B_SPI:
             self.spi.close()
         except Exception:
             pass
-
