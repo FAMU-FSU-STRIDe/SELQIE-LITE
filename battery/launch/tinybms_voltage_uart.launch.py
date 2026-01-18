@@ -12,11 +12,8 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "port": "/dev/ttyTHS1",
-                        "baud": 115200,
-                        "rate_hz": 2.0,
-                        "timeout_s": 0.25,
-                        "wakeup_send_twice": True,
+                        "port": "/dev/ttyUSB0",
+                        "rate_hz": 5.0,
                     }
                 ],
             )

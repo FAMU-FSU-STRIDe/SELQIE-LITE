@@ -22,7 +22,7 @@ tmux send-keys "source ${ROS2_WS}/install/setup.bash; ros2 launch selqie_bringup
 
 # Sourced environment in bottom-left Battery
 tmux select-pane -t 1
-tmux send-keys "source ${ROS2_WS}/install/setup.bash; ros2 run battery tinybms_voltage_uart --ros-args -p port:=/dev/ttyUSB0 -p rate_hz:=5.0" C-m
+tmux send-keys "source ${ROS2_WS}/install/setup.bash" C-m
 
 # SELQIE Terminal in top-right
 tmux select-pane -t 2
