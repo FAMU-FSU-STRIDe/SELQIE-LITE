@@ -567,8 +567,9 @@ class SELQIE:
         if parts[0].lower() == 'stop':
             if self._swim.is_running():
                 self._swim.stop()
-                self.stop_motors('All')
-                print('Swim gait stopped.')
+                self.start_motors('All')
+                self._stand.start(position_deg=0.0)
+                print('Swim gait stopped. Standing.')
             else:
                 print('Swim gait is not running.')
             return
