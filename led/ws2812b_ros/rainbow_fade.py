@@ -4,8 +4,10 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt32MultiArray
 
+
 def pack_rgb(r, g, b):
     return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF)
+
 
 class RainbowFade(Node):
     def __init__(self):
@@ -13,12 +15,12 @@ class RainbowFade(Node):
 
         # Animation controls
         self.declare_parameter('num_leds', 2)
-        self.declare_parameter('rate_hz', 60.0)         # FPS / publish rate
-        self.declare_parameter('cycle_seconds', 10.0)   # seconds per full hue cycle
-        self.declare_parameter('spread_degrees', 120.0) # hue offset per LED
-        self.declare_parameter('saturation', 1.0)       # 0..1
-        self.declare_parameter('value', 1.0)            # 0..1
-        self.declare_parameter('reverse', False)        # bool
+        self.declare_parameter('rate_hz', 60.0)  # FPS / publish rate
+        self.declare_parameter('cycle_seconds', 10.0)  # seconds per full hue cycle
+        self.declare_parameter('spread_degrees', 120.0)  # hue offset per LED
+        self.declare_parameter('saturation', 1.0)  # 0..1
+        self.declare_parameter('value', 1.0)  # 0..1
+        self.declare_parameter('reverse', False)  # bool
 
         self.n_leds = int(self.get_parameter('num_leds').value)
         self.rate_hz = float(self.get_parameter('rate_hz').value)
@@ -65,10 +67,10 @@ class RainbowFade(Node):
         msg.data = data
         self.pub.publish(msg)
 
+
 def main():
     rclpy.init()
     node = RainbowFade()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
-
