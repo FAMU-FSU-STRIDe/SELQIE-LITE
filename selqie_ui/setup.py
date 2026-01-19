@@ -19,6 +19,7 @@ setup(
     entry_points={
         'console_scripts': [
             'selqie_terminal = selqie_ui.selqie_terminal:main',
+            'selqie_glider = selqie_ui.selqie_glider:main',
         ],
     },
 )
