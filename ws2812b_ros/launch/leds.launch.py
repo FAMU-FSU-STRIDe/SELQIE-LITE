@@ -15,7 +15,7 @@ def generate_launch_description():
         Node(
             package='ws2812b_ros',
             executable='ws2812b-set',
-            name='ws2812b_led_default',
+            name='ws2812b_set_cli',
             arguments=['--hex', '0000FF', '--num-leds', '2'],
         ),
     ])

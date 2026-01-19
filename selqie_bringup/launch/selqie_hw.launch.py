@@ -11,7 +11,7 @@ LEAK_SENSOR_LAUNCH_FILE = os.path.join(
         get_package_share_directory('leak_sensor'), 'launch', 'leak_sensor.launch.py')
         
 LED_LAUNCH_FILE = os.path.join(
-        get_package_share_directory('led'), 'launch', 'led_demo.launch.py')
+        get_package_share_directory('ws2812b_ros'), 'launch', 'leds.launch.py')
         
 LATCH_LAUNCH_FILE = os.path.join(
         get_package_share_directory('latch'), 'launch', 'latch.launch.py')
@@ -33,7 +33,7 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(BATTERY_LAUNCH_FILE)
         ),
-#        IncludeLaunchDescription(
-#            PythonLaunchDescriptionSource(LED_LAUNCH_FILE)
-#        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(LED_LAUNCH_FILE)
+        ),
     ])
