@@ -11,9 +11,9 @@ def generate_launch_description():
             output="screen",
             parameters=[
                 {
-                    "gpio_pin": 32,
+                    "gpio_pin": 29,
                     "gpio_mode": "BOARD",
-                    "pull": "DOWN",
+                    "pull": "UP",
                     "active_high": True,
                     "poll_hz": 10.0,
                 }
