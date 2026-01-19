@@ -105,7 +105,7 @@ class LatchNode(Node):
                         msg.data = (parts[1] == "1")
                         self.reed_pub.publish(msg)
                     else:
-                        self.get_logger().warn(f"Malformed REED line: {text}")
+                        self.get_logger().warning(f"Malformed REED line: {text}")
                 # Optional: you can handle "OK <deg>" / "PONG" / etc here if you want
             except (serial.SerialException, OSError) as exc:
                 self.get_logger().error(f"Serial read failed: {exc}")
@@ -125,7 +125,7 @@ class LatchNode(Node):
 
         with self._serial_lock:
             if self.ser is None or not self.ser.is_open:
-                self.get_logger().warn("Serial not connected; cannot send latch command")
+                self.get_logger().warning("Serial not connected; cannot send latch command")
                 return
             try:
                 self.ser.write(payload)
@@ -169,4 +169,3 @@ def main(args=None) -> None:
 
 if __name__ == "__main__":
     main()
-
