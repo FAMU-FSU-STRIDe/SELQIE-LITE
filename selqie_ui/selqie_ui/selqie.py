@@ -9,7 +9,7 @@ import numpy as np
 import rclpy
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
-from std_msgs.msg import Float32, Float64, Float64MultiArray, String
+from std_msgs.msg import Float32, Float64, Float64MultiArray, String, UInt32MultiArray
 
 from motor_interfaces.msg import MotorState
 
@@ -36,6 +36,7 @@ class MotorConsole(Node):
             for motor_id in self.MOTOR_IDS
         }
         self._latch_pub = self.create_publisher(Float64, '/latch_angle_cmd', 10)
+        self._led_pub = self.create_publisher(UInt32MultiArray, '/led_colors', 10)
 
         # Subscriptions (state + error) with local caches for printing
         self._state_cache: dict[int, MotorState] = {}
@@ -150,6 +151,11 @@ class MotorConsole(Node):
         msg.data = float(angle_deg)
         self._latch_pub.publish(msg)
 
+    def send_led_colors(self, colors: Iterable[int]) -> None:
+        msg = UInt32MultiArray()
+        msg.data = [int(color) for color in colors]
+        self._led_pub.publish(msg)
+
     def shutdown(self) -> None:
         if self._shutdown:
             return
@@ -170,6 +176,10 @@ def _wrap_to_180(x_deg: float) -> float:
 
 def _sgn(x: float) -> float:
     return -1.0 if x < 0 else (1.0 if x > 0 else 0.0)
+
+
+def pack_rgb(r: int, g: int, b: int) -> int:
+    return ((int(r) & 0xFF) << 16) | ((int(g) & 0xFF) << 8) | (int(b) & 0xFF)
 
 
 ## Beuhler Class
@@ -487,6 +497,10 @@ class SELQIE:
             print('Motor id must be between 1 and 4')
             return []
         return [motor_id]
+
+    def set_led_colors(self, color0: int, color1: int) -> None:
+        """Publish packed RGB colors for the two WS2812B LEDs."""
+        self._console.send_led_colors([color0, color1])
 
     # ---- lifecycle ----------------------------------------------------
     def handle_exit(self) -> bool:
