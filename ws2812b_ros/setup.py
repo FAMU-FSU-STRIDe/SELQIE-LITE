@@ -12,6 +12,7 @@ setup(
         ('share/' + package_name + '/launch', ['launch/led_demo.launch.py']),
         ('share/' + package_name + '/launch', [
                 'launch/led_demo.launch.py',
+                'launch/leds.launch.py',
                 'launch/rainbow_fade.launch.py',   # <-- add this
             ]),
     ],
@@ -35,4 +36,3 @@ setup(
         ],
     },
 )
-
