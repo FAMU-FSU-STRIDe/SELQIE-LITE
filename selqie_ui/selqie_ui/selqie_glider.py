@@ -55,7 +55,6 @@ class GliderController:
     def _stop_all_gaits(self) -> None:
         self._swim.stop()
         self._beuhler.stop()
-        self._stand.stop()
 
     def _wait_for_reed_hold(self, hold_seconds: float) -> None:
         self._set_lights(COLOR_BLUE)
@@ -92,6 +91,7 @@ class GliderController:
         self._wait_for_reed_hold(10.0)
 
         self._wait_for_reed_release()
+        self._set_lights(COLOR_BLUE)
         time.sleep(5.0)
         self._set_lights(COLOR_ORANGE)
         self._start_motors()
@@ -102,13 +102,17 @@ class GliderController:
         time.sleep(0.02)
         self._set_lights(COLOR_CYAN)
         self._console.send_latch_angle(0.0)
-        time.sleep(20.0)
+        time.sleep(2.0)
+        self._console.send_latch_angle(180.0)
+        time.sleep(18.0)
 
         self._set_lights(COLOR_PURPLE)
-        self._start_motors()
+        self._stand.stop()
+        time.sleep(1.0)
         self._beuhler.start()
         time.sleep(10.0)
         self._beuhler.stop()
+        time.sleep(2)
         self._zero_motors()
         time.sleep(0.02)
         self._stand.start(position_deg=0.0)
