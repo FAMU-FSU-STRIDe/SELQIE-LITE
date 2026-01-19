@@ -191,7 +191,7 @@ class BeuhlerClock:
 
         # Tunables (defaults mirror the standalone beuhler_clock node)
         self.gait_frequency_hz = 0.5 # 1 / total gait period
-        self.alpha = 6.0 # how much faster fast portion is
+        self.alpha = 1.5 # how much faster fast portion is
         self.slow_band_deg = 30.0 # d_theta in stance
 
         # Constants
@@ -345,9 +345,9 @@ class SwimGait:
         self._console = console
 
         # Tunables
-        self.frequency_hz = 0.5
-        self.center_angle = 0.0
-        self.delta_angle = 0.5
+        self.frequency_hz = 1.0
+        self.center_angle = 60.0
+        self.delta_angle = 90.0
 
         # Control settings
         self.control_hz = 50.0
@@ -531,9 +531,11 @@ class SELQIE:
         #    self._console.send_special('exit', targets)
 
     def zero_motors(self, line: str) -> None:
-        self._stop_stand()
+        # self._stop_stand()
         targets = self._parse_targets(line, default_all=True)
         if targets:
+            self._console.send_idle(targets)
+            time.sleep(0.02)
             self._console.send_special('zero', targets)
 
     def clear(self, line: str) -> None:
