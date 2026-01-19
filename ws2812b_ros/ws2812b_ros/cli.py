@@ -1,7 +1,10 @@
 # ws2812b_ros/cli.py
 import argparse
+import sys
+
 import rclpy
 from rclpy.node import Node
+from rclpy.utilities import remove_ros_args
 from std_msgs.msg import UInt32MultiArray
 
 def pack_rgb(r, g, b):
@@ -65,7 +68,8 @@ def resolve_color(args):
 
 def main():
     parser = build_parser()
-    args = parser.parse_args()
+    cli_args = remove_ros_args(sys.argv)[1:]
+    args = parser.parse_args(cli_args)
 
     color = resolve_color(args)
     n = max(1, args.num_leds)
@@ -79,7 +83,7 @@ def main():
         data = [0] * n
         data[args.index] = color
 
-    rclpy.init()
+    rclpy.init(args=sys.argv)
     node = Node("ws2812b_set_cli")
     pub = node.create_publisher(UInt32MultiArray, args.topic, 10)
 
@@ -99,4 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
