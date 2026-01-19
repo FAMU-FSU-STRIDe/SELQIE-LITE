@@ -131,7 +131,7 @@ class LatchNode(Node):
                 self.ser.write(payload)
                 self.ser.flush()
                 # Keep this as debug to avoid spamming INFO at control rate
-                self.get_logger().debug("Sent latch angle %.1f deg", angle_deg)
+                self.get_logger().debug(f"Sent latch angle {angle_deg:.1f} deg")
             except (serial.SerialException, OSError) as exc:
                 self.get_logger().error(f"Serial write failed: {exc}")
                 try:
