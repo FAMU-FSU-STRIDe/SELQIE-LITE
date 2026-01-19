@@ -39,7 +39,7 @@ def generate_launch_description():
         DeclareLaunchArgument('reverse',        default_value='false'),
 
         Node(
-            package='ws2812b_ros',
+            package='led',
             executable='led_node',
             name='ws2812b_led_node',
             output='screen',
@@ -54,7 +54,7 @@ def generate_launch_description():
         ),
 
         Node(
-            package='ws2812b_ros',
+            package='led',
             executable='rainbow_fade',
             name='ws2812b_rainbow_fade',
             output='screen',
@@ -69,4 +69,3 @@ def generate_launch_description():
             }],
         ),
     ])
-

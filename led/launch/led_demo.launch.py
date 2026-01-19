@@ -30,7 +30,7 @@ def generate_launch_description():
         DeclareLaunchArgument('hold_secs',   default_value='1.0'),   # how long each color holds
 
         Node(
-            package='ws2812b_ros',
+            package='led',
             executable='led_node',
             name='ws2812b_led_node',
             output='screen',
@@ -45,7 +45,7 @@ def generate_launch_description():
         ),
 
         Node(
-            package='ws2812b_ros',
+            package='led',
             executable='led_tester',
             name='ws2812b_led_tester',
             output='screen',
@@ -56,4 +56,3 @@ def generate_launch_description():
             }],
         ),
     ])
-
