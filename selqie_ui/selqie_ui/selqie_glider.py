@@ -7,7 +7,7 @@ import threading
 import time
 
 import rclpy
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, Float32
 
 from selqie_ui.selqie import BeuhlerClock, MotorConsole, StandHold, SwimGait, pack_rgb
 
@@ -28,9 +28,11 @@ class GliderController:
         self._beuhler = BeuhlerClock(self._console)
         self._stand = StandHold(self._console)
         self._reed_state = False
+        self._depth_m: float | None = None
         self._lock = threading.Lock()
 
         self._console.create_subscription(Bool, "/reed_switch", self._on_reed, 10)
+        self._console.create_subscription(Float32, "/bar30/depth_salt", self._on_depth, 10)
 
     def _on_reed(self, msg: Bool) -> None:
         with self._lock:
@@ -39,6 +41,14 @@ class GliderController:
     def _reed_active(self) -> bool:
         with self._lock:
             return self._reed_state
+
+    def _on_depth(self, msg: Float32) -> None:
+        with self._lock:
+            self._depth_m = float(msg.data)
+
+    def _depth(self) -> float | None:
+        with self._lock:
+            return self._depth_m
 
     def _set_lights(self, color: int) -> None:
         self._console.send_led_colors([color, color])
@@ -81,8 +91,24 @@ class GliderController:
                 flash_index = 1 - flash_index
                 time.sleep(0.5)
 
-    def _wait_for_reed_release(self) -> None:
-        while rclpy.ok() and self._reed_active():
+    def _wait_for_depth_rise(self, rise_m: float) -> None:
+        start_depth = None
+        while rclpy.ok() and start_depth is None:
+            start_depth = self._depth()
+            if start_depth is None:
+                time.sleep(0.1)
+
+        if start_depth is None:
+            return
+
+        target_depth = start_depth - rise_m
+        while rclpy.ok():
+            current_depth = self._depth()
+            if current_depth is None:
+                time.sleep(0.1)
+                continue
+            if current_depth <= target_depth:
+                return
             time.sleep(0.1)
 
     def run(self) -> None:
@@ -90,7 +116,7 @@ class GliderController:
         self._console.send_latch_angle(180.0)
         self._wait_for_reed_hold(10.0)
 
-        self._wait_for_reed_release()
+        self._wait_for_depth_rise(0.2)
         self._set_lights(COLOR_BLUE)
         time.sleep(5.0)
         self._set_lights(COLOR_ORANGE)
