@@ -121,6 +121,7 @@ class BarNode(Node):
     def __init__(self):
         super().__init__('bar30_node')
         self.pub_depth = self.create_publisher(Float32, 'bar30/depth', 10)
+        self.pub_depth_salt = self.create_publisher(Float32, 'bar30/depth_salt', 10)
 
 
         timer_period = 0.02  # seconds
@@ -129,6 +130,7 @@ class BarNode(Node):
         self.ms5837_data = BarComponentr()
 
         self.msg_depth = Float32()
+        self.msg_depth_salt = Float32()
 
         self.init_fresh, self.init_salt = self.ms5837_data.depth_init_error()
 
@@ -143,10 +145,12 @@ class BarNode(Node):
 
         #self.msg_depth.data = round(fresh_depth, 3)
         self.msg_depth.data = round(depth_data - ajust_depth - self.init_fresh, 3)
+        self.msg_depth_salt.data = round(depth_data - ajust_depth - self.init_salt, 3)
 
         # self.get_logger().info('Fresh Detph :{} m'.format(self.msg_depth.data))
         
         self.pub_depth.publish(self.msg_depth)
+        self.pub_depth_salt.publish(self.msg_depth_salt)
 
 
 def main(args=None):
