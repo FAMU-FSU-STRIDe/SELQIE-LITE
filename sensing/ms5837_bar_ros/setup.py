@@ -17,7 +17,6 @@ def package_files(directory, data_files):
     return data_files
 
 data_files = package_files('launch/', data_files)
-data_files = package_files('rviz/', data_files)
 
 setup(
     name=package_name,
