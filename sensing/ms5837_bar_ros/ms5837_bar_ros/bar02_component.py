@@ -1,183 +1,104 @@
+from __future__ import annotations
+
 import rclpy
 from rclpy.node import Node
 
 from nav_msgs.msg import Odometry
-from sensor_msgs.msg import FluidPressure
-from sensor_msgs.msg import Temperature
 from std_msgs.msg import Float32
-
-from rcl_interfaces.msg import SetParametersResult
 
 from . import ms5837
 
-import time
 
+class Bar02Driver:
+    def __init__(self, bus: int = 7):
+        self.sensor = ms5837.MS5837_02BA(bus)
 
-class BarComponentr:
-    def __init__(self):
-        
-        # self.sensor = ms5837.MS5837_30BA() # Default I2C bus is 7
-        #self.sensor = ms5837.MS5837_30BA(7) # Specify I2C bus
-        self.sensor = ms5837.MS5837_02BA()
-        #self.sensor = ms5837.MS5837_02BA(0)
-        #self.sensor = ms5837.MS5837(model=ms5837.MS5837_MODEL_30BA, bus=0) # Specify model and bus
-
-        # We must initialize the self.sensor before reading it
         if not self.sensor.init():
-                print("Sensor could not be initialized")
-                exit(1)
+            raise RuntimeError("Sensor could not be initialized")
 
-        # We have to read values from self.sensor to update pressure and temperature
         if not self.sensor.read():
-                print("Sensor read failed!")
-                exit(1)
+            raise RuntimeError("Sensor initial read failed")
 
-        print("Pressure: {} atm {} Torr {} psi".format(
-                round( self.sensor.pressure(ms5837.UNITS_atm), 2),
-                round( self.sensor.pressure(ms5837.UNITS_Torr), 2),
-                round( self.sensor.pressure(ms5837.UNITS_psi), 2),
-        ))
+    def read(self) -> bool:
+        return bool(self.sensor.read())
 
+    def pressure_mbar(self) -> float:
+        return float(self.sensor.pressure())
 
-        print("Temperature: {} C {} F {} K".format(
-                round( self.sensor.temperature(ms5837.UNITS_Centigrade), 2),
-                round( self.sensor.temperature(ms5837.UNITS_Farenheit), 2),
-                round( self.sensor.temperature(ms5837.UNITS_Kelvin), 2),
-        ))
+    def temperature_c(self) -> float:
+        return float(self.sensor.temperature())
 
-        self.freshwaterDepth = self.sensor.depth() # default is freshwater
-        self.sensor.setFluidDensity(ms5837.DENSITY_SALTWATER)
-        self.saltwaterDepth = self.sensor.depth() # No nead to read() again
-        self.sensor.setFluidDensity(1000) # kg/m^3
-
-
-        # TODO me
-        self.ajust_depth = 0.1 # m
-        self.init_fresh_depth = self.freshwaterDepth - self.ajust_depth
-        self.init_salt_depth = self.saltwaterDepth - self.ajust_depth
-
-        print("Depth: {} m (freshwater) {} m (saltwater)".format(
-                round(self.init_fresh_depth , 3),
-                round(self.init_salt_depth , 3),
-        ))
-
-        # fluidDensity doesn't matter for altitude() (always MSL air density)
-        print("MSL Relative Altitude: {} m".format( self.sensor.altitude() )) # relative to Mean Sea Level pressure in air
-
-        time.sleep(1)
-
-
-    def pressure_value(self):
-        if self.sensor.read():
-                hpa_data = self.sensor.pressure()
-                psi_data = self.sensor.pressure(ms5837.UNITS_psi)
-
-                # Debag
-                #print("Pressure: {} hPa  {} psi".format(
-                #        round( hpa_data, 1), # Default is mbar (no arguments)
-                #        round( psi_data, 3), # Request psi
-                #)+"\n")
-        else:
-                #print("Sensor read failed!")
-                exit(1)
-
-        return hpa_data, psi_data
-
-    def temperature_value(self):
-        if self.sensor.read():
-                temp_degrees = self.sensor.temperature()
-                temp_farenheit = self.sensor.temperature(ms5837.UNITS_Farenheit)
-                
-                # Debag
-                #print("Temperature: {} C  {} F".format(
-                #        round(temp_degrees , 2), # Default is degrees C (no arguments)
-                #        round(temp_farenheit , 2), # Request Farenheit
-                #)+"\n")
-        else:
-                #print("Sensor read failed!")
-                exit(1)
-
-        return temp_degrees, temp_farenheit
-
-    def depth_value(self):
-        if self.sensor.read():
-                #fresh_depth = self.freshwaterDepth
-                #salt_depth = self.saltwaterDepth
-                depth_data = self.sensor.depth()
-
-                # Debag
-                #print("Depth: {} m (freshwater) {} m (saltwater)".format(
-                #        round(freshwater_depth , 3),
-                #        round(saltwater_depth , 3),
-                #)+"\n")
-        else:
-                #print("Sensor read failed!")
-                exit(1)
-
-        #return fresh_depth, salt_depth
-        return depth_data
-
-    def depth_init_error(self):
-           return self.init_fresh_depth, self.init_salt_depth
+    def depth_m(self, fluid_density: float) -> float:
+        self.sensor.setFluidDensity(fluid_density)
+        return float(self.sensor.depth())
 
 
 class BarNode(Node):
 
     def __init__(self):
-        super().__init__('bar02_node')
-        self.pub_pressure = self.create_publisher(Float32, 'bar02/pressure', 10)
-        self.pub_temp = self.create_publisher(Float32, 'bar02/temperature', 10)
-        self.pub_depth = self.create_publisher(Float32, 'bar02/depth', 10)
-        self.pub_odom = self.create_publisher(Odometry, 'bar02/odom', 10)
+        super().__init__("bar02_node")
+        self.pub_pressure = self.create_publisher(Float32, "bar02/pressure", 10)
+        self.pub_temp = self.create_publisher(Float32, "bar02/temperature", 10)
+        self.pub_depth = self.create_publisher(Float32, "bar02/depth", 10)
+        self.pub_odom = self.create_publisher(Odometry, "bar02/odom", 10)
 
+        self.declare_parameter("i2c_bus", 7)
+        self.declare_parameter("rate_hz", 50.0)
+        self.declare_parameter("density_fresh", 997.0)
+        self.declare_parameter("zero_on_start", True)
 
-        timer_period = 0.02  # seconds
+        bus = int(self.get_parameter("i2c_bus").value)
+        rate_hz = float(self.get_parameter("rate_hz").value)
+        self.density_fresh = float(self.get_parameter("density_fresh").value)
+        self.zero_on_start = bool(self.get_parameter("zero_on_start").value)
+
+        try:
+            self.driver = Bar02Driver(bus=bus)
+        except Exception as exc:
+            self.get_logger().error(f"Failed to start MS5837: {exc}")
+            raise
+
+        self.zero_depth = 0.0
+        if self.zero_on_start:
+            self._zero_depth()
+
+        timer_period = 1.0 / max(rate_hz, 1e-6)
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
-        self.ms5837_data = BarComponentr()
+        self.get_logger().info(
+            f"bar02_node running: bus={bus}, rate={rate_hz} Hz, "
+            f"density_fresh={self.density_fresh}, zero_on_start={self.zero_on_start}"
+        )
 
         self.msg_pressure = Float32()
         self.msg_temp = Float32()
         self.msg_depth = Float32()
         self.msg_odom = Odometry()
 
-        self.init_fresh, self.init_salt = self.ms5837_data.depth_init_error()
-
+    def _zero_depth(self) -> None:
+        if not self.driver.read():
+            self.get_logger().warn("Zeroing failed: sensor read() failed")
+            return
+        self.zero_depth = self.driver.depth_m(self.density_fresh)
+        self.get_logger().info(f"Zeroed depth: fresh={self.zero_depth:.4f} m")
 
     def timer_callback(self):
+        if not self.driver.read():
+            self.get_logger().warn("MS5837 read() failed")
+            return
 
-        hpa_data, psi_data = self.ms5837_data.pressure_value()
-        temp_degrees, temp_farenheit = self.ms5837_data.temperature_value()
-        #fresh_depth, salt_depth = self.ms5837_data.depth_value()
-        depth_data = self.ms5837_data.depth_value()
+        pressure_mbar = self.driver.pressure_mbar()
+        temp_c = self.driver.temperature_c()
+        depth_m = self.driver.depth_m(self.density_fresh) - self.zero_depth
 
-
-        # self.msg_pressure.header.stamp = self.get_clock().now().to_msg()
-        # self.msg_pressure.header.frame_id = "bar02_pressure"
-        # self.msg_pressure.fluid_pressure = round(hpa_data, 1)
-        self.msg_pressure.data = round(hpa_data, 1)
-
-        # self.msg_temp.header.stamp = self.get_clock().now().to_msg()
-        # self.msg_temp.header.frame_id = "bar02_temp"
-        # self.msg_temp.temperature = round(temp_degrees, 2)
-        self.msg_temp.data = round(temp_degrees, 1)
-
-        # TODO me
-        ajust_depth = 0.1 # meter
-
-        #self.msg_depth.data = round(fresh_depth, 3)
-        self.msg_depth.data = round(depth_data - ajust_depth - self.init_fresh, 3)
-        depth_data_mm = round(self.msg_depth.data*1000, 3)
+        self.msg_pressure.data = round(pressure_mbar, 1)
+        self.msg_temp.data = round(temp_c, 1)
+        self.msg_depth.data = round(depth_m, 3)
 
         self.msg_odom.header.stamp = self.get_clock().now().to_msg()
         self.msg_odom.header.frame_id = "bar02_link"
-        #self.msg_odom.child_frame_id = ""
-        self.msg_odom.pose.pose.position.z = - self.msg_depth.data
+        self.msg_odom.pose.pose.position.z = -self.msg_depth.data
 
-        # self.get_logger().info('Pressure : {} hpa'.format(self.msg_pressure.data))
-        # self.get_logger().info('Temperature :{} C'.format(self.msg_temp.data))
-        # self.get_logger().info('Fresh Detph :{} m  {} mm'.format(self.msg_depth.data, depth_data_mm))
-        
         self.pub_pressure.publish(self.msg_pressure)
         self.pub_temp.publish(self.msg_temp)
         self.pub_depth.publish(self.msg_depth)
