@@ -23,7 +23,7 @@ class Bar30Driver:
     def __init__(self, bus: int = 7, model: str = "30BA"):
         model_u = model.upper().strip()
         if model_u == "30BA":
-            self.sensor = ms5837.MS5837_30BA(7)
+            self.sensor = ms5837.MS5837_30BA(bus)
         elif model_u == "02BA":
             self.sensor = ms5837.MS5837_02BA(bus)
         else:
@@ -335,4 +335,3 @@ def main(args=None):
 
 if __name__ == "__main__":
     main()
-
