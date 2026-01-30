@@ -298,8 +298,12 @@ class BeuhlerClock:
     # ---- runner ------------------------------------------------------
     def _run(self) -> None:
         control_dt = 1.0 / max(self.control_hz, 1e-6)
+
+    # Start both at 0 to avoid initial jerk on group B
         self._theta_a_deg = 0.0
-        self._theta_b_deg = self.group_offset_deg
+        self._theta_b_deg = 0.0
+
+        offset_reached = False
 
         while not self._stop_event.is_set():
             cycle_start = time.monotonic()
@@ -313,10 +317,19 @@ class BeuhlerClock:
             theta_b = self._theta_b_deg
 
             vA = self._region_speed_deg_s(theta_a, f, slow_band_deg, alpha)
-            vB = self._region_speed_deg_s(theta_b, f, slow_band_deg, alpha)
 
-            self._theta_a_deg = theta_a + vA / self.control_hz
-            self._theta_b_deg = theta_b + vB / self.control_hz
+        # --- stagger start: hold theta_b at 0 until theta_a reaches the offset ---
+            if not offset_reached:
+                self._theta_a_deg = theta_a + vA / self.control_hz
+                self._theta_b_deg = 0.0
+
+                target = _sgn(f) * self.group_offset_deg  # +180 forward, -180 reverse
+                if (f >= 0.0 and self._theta_a_deg >= target) or (f < 0.0 and self._theta_a_deg <= target):
+                    offset_reached = True
+            else:
+                vB = self._region_speed_deg_s(theta_b, f, slow_band_deg, alpha)
+                self._theta_a_deg = theta_a + vA / self.control_hz
+                self._theta_b_deg = theta_b + vB / self.control_hz
 
             if (
                 abs(self._theta_a_deg) >= self.position_limit_deg
@@ -326,17 +339,15 @@ class BeuhlerClock:
                 break
 
             motorOrder = np.array([1, 4, 2, 3])
-
             for i, motor in enumerate(motorOrder):
                 target_pos = self._theta_a_deg if i < 2 else self._theta_b_deg
                 self._console.send_position((int(motor),), target_pos)
 
-
-            # Rate-limit the loop to the configured control frequency
             elapsed = time.monotonic() - cycle_start
             sleep_time = control_dt - elapsed
             if sleep_time > 0:
                 time.sleep(sleep_time)
+
 
 class SwimGait:
     """Synchronized oscillatory position control gait for all legs."""
