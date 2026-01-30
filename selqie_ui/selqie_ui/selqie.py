@@ -345,9 +345,9 @@ class SwimGait:
         self._console = console
 
         # Tunables
-        self.frequency_hz = 1.0
+        self.frequency_hz = 1.5
         self.center_angle = 60.0
-        self.delta_angle = 90.0
+        self.delta_angle = 75.0
 
         # Control settings
         self.control_hz = 50.0

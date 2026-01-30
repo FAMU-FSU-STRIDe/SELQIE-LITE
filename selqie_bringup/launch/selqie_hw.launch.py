@@ -18,6 +18,9 @@ LATCH_LAUNCH_FILE = os.path.join(
 
 BATTERY_LAUNCH_FILE = os.path.join(
         get_package_share_directory('battery'), 'launch', 'tinybms_voltage_uart.launch.py')
+        
+DEPTH_LAUNCH_FILE = os.path.join(
+        get_package_share_directory('selqie_bringup'), 'launch', 'sensing.launch.py')
 
 def generate_launch_description():
     return LaunchDescription([
@@ -30,10 +33,13 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(LEAK_SENSOR_LAUNCH_FILE)
         ),
-        IncludeLaunchDescription(
-            PythonLaunchDescriptionSource(BATTERY_LAUNCH_FILE)
-        ),
+#        IncludeLaunchDescription(
+#            PythonLaunchDescriptionSource(BATTERY_LAUNCH_FILE)
+#        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(LED_LAUNCH_FILE)
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(DEPTH_LAUNCH_FILE)
         ),
     ])

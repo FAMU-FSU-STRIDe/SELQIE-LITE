@@ -14,11 +14,12 @@ from selqie_ui.selqie import BeuhlerClock, MotorConsole, StandHold, SwimGait, pa
 
 COLOR_WHITE = pack_rgb(255, 255, 255)
 COLOR_GREEN = pack_rgb(0, 255, 0)
-COLOR_BLUE = pack_rgb(0, 0, 255)
-COLOR_ORANGE = pack_rgb(255, 165, 0)
+COLOR_ORANGE = pack_rgb(0, 0, 255) # CHANGED TO BLUE AGAIN (ORANGE IS 255, 100, 0)
+COLOR_YELLOW = pack_rgb(255, 255, 0)
 COLOR_CYAN = pack_rgb(0, 255, 255)
 COLOR_PURPLE = pack_rgb(160, 32, 240)
-COLOR_PINK = pack_rgb(255, 105, 180)
+COLOR_PINK = pack_rgb(255, 25, 52)
+COLOR_RED = pack_rgb(255, 0, 0)
 
 
 class GliderController:
@@ -57,7 +58,7 @@ class GliderController:
         self._beuhler.stop()
 
     def _wait_for_reed_hold(self, hold_seconds: float) -> None:
-        self._set_lights(COLOR_BLUE)
+        self._set_lights(COLOR_ORANGE)
         flash_colors = [COLOR_WHITE, COLOR_GREEN]
 
         while rclpy.ok():
@@ -69,7 +70,7 @@ class GliderController:
             flash_index = 0
             while rclpy.ok():
                 if not self._reed_active():
-                    self._set_lights(COLOR_BLUE)
+                    self._set_lights(COLOR_ORANGE)
                     break
 
                 elapsed = time.monotonic() - start_time
@@ -86,31 +87,13 @@ class GliderController:
             time.sleep(0.1)
 
     def run(self) -> None:
-        self._zero_motors()
-        self._console.send_latch_angle(180.0)
-        self._wait_for_reed_hold(10.0)
-
-        self._wait_for_reed_release()
-        self._set_lights(COLOR_BLUE)
-        time.sleep(5.0)
-        self._set_lights(COLOR_ORANGE)
-        self._start_motors()
-        self._swim.start(frequency_hz=self._swim.frequency_hz)
-        time.sleep(10.0)
-        self._swim.stop()
+        self._set_lights(COLOR_RED)
         self._stand.start(position_deg=0.0)
-        time.sleep(0.02)
-        self._set_lights(COLOR_CYAN)
-        self._console.send_latch_angle(0.0)
-        time.sleep(2.0)
-        self._console.send_latch_angle(180.0)
-        time.sleep(18.0)
-
+        self._wait_for_reed_hold(10.0)
+        time.sleep(60.0)
         self._set_lights(COLOR_PURPLE)
-        self._stand.stop()
-        time.sleep(1.0)
         self._beuhler.start()
-        time.sleep(10.0)
+        time.sleep(30.0)
         self._beuhler.stop()
         time.sleep(2)
         self._zero_motors()
