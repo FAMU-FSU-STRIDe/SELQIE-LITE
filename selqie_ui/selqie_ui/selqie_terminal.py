@@ -36,6 +36,10 @@ class SELQIETerminal(SELQIE, Cmd):
             )
         topics.extend(
             [
+                '/imu',
+                '/bar02/depth',
+                '/bar30/depth',
+                '/bar30/depth_salt',
                 '/latch_angle_cmd',
                 '/led_colors',
                 '/tinybms/pack_voltage',
