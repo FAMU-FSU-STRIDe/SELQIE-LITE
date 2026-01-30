@@ -20,10 +20,10 @@ BATTERY_LAUNCH_FILE = os.path.join(
         get_package_share_directory('battery'), 'launch', 'tinybms_voltage_uart.launch.py')
         
 DEPTH_LAUNCH_FILE = os.path.join(
-        get_package_share_directory('sensing'), 'ms5837_bar_ros', 'launch', 'bar30.launch.py')
+        get_package_share_directory('ms5837_bar_ros'), 'launch', 'bar30.launch.py')
         
 IMU_LAUNCH_FILE = os.path.join(
-        get_package_share_directory('sensing'),'bno08x-ros2-driver', 'launch', 'bno085_i2c.launch.py')
+        get_package_share_directory('bno08x-ros2-driver'), 'launch', 'bno085_i2c.launch.py')
 
 def generate_launch_description():
     return LaunchDescription([
