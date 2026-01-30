@@ -66,7 +66,13 @@ class SELQIETerminal(SELQIE, Cmd):
 
         cmd = ['ros2', 'bag', 'record', '-o', str(output_dir), *self._recording_topics()]
         try:
-            self._bag_process = subprocess.Popen(cmd)
+            self._bag_process = subprocess.Popen(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
         except FileNotFoundError:
             print('Unable to start ros2 bag recording: ros2 CLI not found.')
             self._bag_process = None
