@@ -22,3 +22,28 @@ ros2 topic pub /latch_angle_cmd std_msgs/msg/Float64 "{data: 0.0}" --once
 # Close latch (180 degrees)
 ros2 topic pub /latch_angle_cmd std_msgs/msg/Float64 "{data: 180.0}" --once
 ```
+
+## Connections chart
+
+| Component | Interface | Connects to |
+| --- | --- | --- |
+| ROS 2 latch node | Topic `/latch_angle_cmd` | Receives commanded angle |
+| Jetson host | USB serial (`/dev/ttyACM0`) | Teensy latch controller |
+| Teensy latch controller | PWM/servo output | Hitec D954SW latch actuator |
+| Jetson + Teensy + servo supply | Ground | Common reference |
+
+## Electrical schematic
+
+```text
+ROS 2 topic /latch_angle_cmd
+           |
+           v
+     latch_node (Python)
+           |
+     USB serial (/dev/ttyACM0)
+           |
+           v
+   Teensy latch controller ---- PWM ----> Hitec D954SW
+           |                                   |
+           +------------ common GND -----------+
+```

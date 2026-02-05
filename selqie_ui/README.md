@@ -39,3 +39,24 @@ Once the console is running you can:
 * Inspect feedback with `status` (latest MotorState) and `errors` (last error
   string per motor).
 The tool exits cleanly with `exit`.
+
+## Connections chart
+
+| UI endpoint | ROS topic/interface | Downstream node |
+| --- | --- | --- |
+| `set_cmd` / `set_vel` | `/motorX/mit_cmd` (`std_msgs/Float32MultiArray`) | `quad_legs/motor_node` |
+| `start_motors` / `stop_motors` / `zero` | `/motorX/special_cmd` (`std_msgs/String`) | `quad_legs/motor_node` |
+| `status` / `errors` view | `/motorX/motor_state` + `/motorX/error` | Feedback from motor nodes |
+
+## Electrical schematic (control-path)
+
+```text
+Operator keyboard
+      |
+      v
+selqie_terminal (tmux UI)
+      |
+      +--> /motorX/mit_cmd ---------> motor_node --> CAN transceiver --> CubeMars actuator
+      +--> /motorX/special_cmd -----> motor_node --> CAN transceiver --> CubeMars actuator
+      +<-- /motorX/motor_state ------ motor_node <-- CAN telemetry   <-- CubeMars actuator
+```
