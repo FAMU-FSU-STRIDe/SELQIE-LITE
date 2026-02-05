@@ -19,3 +19,21 @@ The full reference documentation is available in:
 An example project based on this driver can be found here:
 
 * [sh2-demo-nucleo](https://github.com/hcrest/sh2-demo-nucleo)
+
+## Connections chart
+
+| Layer | Interface | Connects to |
+| --- | --- | --- |
+| SH-2 library (`sh2.c`) | HAL callbacks (`sh2_hal.h`) | Platform transport implementation |
+| Platform transport | I2C/SPI/UART (board-specific) | BNO08x sensor hub device |
+| Application | SH-2 API (`sh2.h`) | Feature reports, sensor data stream |
+
+## Electrical schematic (reference wiring)
+
+```text
+Host MCU/SoC
+   |   | +-- I2C SCL/SDA (or SPI/UART) --> BNO08x breakout
+   | +-- INT/GPIO (optional) -------> BNO08x INT pin
+   +---- GND -----------------------> BNO08x GND
+   +---- 3V3 -----------------------> BNO08x VDD
+```

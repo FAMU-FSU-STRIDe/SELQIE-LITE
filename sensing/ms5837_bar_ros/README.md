@@ -71,3 +71,23 @@ ros2 launch sensing_bringup bar02.launch.py
 
 This package is released under the MIT License. The MS5837 Python driver and
 sensor documentation remain under their respective upstream licenses.
+
+## Connections chart
+
+| Component | Interface | Connects to |
+| --- | --- | --- |
+| `bar30_node` / `bar02_node` | I2C bus (`/dev/i2c-*`) | MS5837 Bar30/Bar02 sensor |
+| Sensor node | ROS topics (`bar*/pressure`, `bar*/depth`, etc.) | Navigation/control consumers |
+| Host + sensor | Ground + 3.3 V/5 V (per sensor board) | Shared electrical reference |
+
+## Electrical schematic
+
+```text
+Jetson/MCU I2C bus
+   SDA ------------------------------> MS5837 SDA
+   SCL ------------------------------> MS5837 SCL
+   3V3/5V (board-dependent) ---------> MS5837 VIN
+   GND ------------------------------> MS5837 GND
+
+MS5837 readings -> bar30_node/bar02_node -> ROS topics (/pressure, /temperature, /depth, /odom)
+```

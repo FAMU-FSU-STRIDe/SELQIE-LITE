@@ -176,4 +176,26 @@ MIT License © 2025 Ryan Kaczmarczyk
 
 ### 🧰 Maintainer
 **Ryan Kaczmarczyk**  
-Florida State University – Mechanical Engineering  
+Florida State University – Mechanical Engineering
+
+## 🔌 Connections Chart
+
+| Source | Interface | Destination | Why |
+| --- | --- | --- | --- |
+| Jetson SPI MOSI | 3.3 V logic | 74AHCT125 input | Buffers and level-shifts data. |
+| 74AHCT125 output | 5 V logic | WS2812B DIN | Correct logic level for LEDs. |
+| Jetson GND | Ground | LED GND + shifter GND | Shared reference. |
+| 5 V PSU | Power | WS2812B VDD | LED power rail. |
+| Optional Jetson 5 V | Power | Small LED chain (≤3 LEDs) | Bring-up/testing only. |
+
+## ⚡ Electrical Schematic
+
+```text
+Jetson MOSI ----330R----> 74AHCT125 (A) ----> WS2812B DIN
+Jetson GND ----------------+------------------> WS2812B GND
+                           |
+5V PSU --------------------+------------------> 74AHCT125 VCC
+5V PSU ---------------------------------------> WS2812B VDD
+
+Capacitor: 1000uF across WS2812B VDD/GND near first pixel
+```

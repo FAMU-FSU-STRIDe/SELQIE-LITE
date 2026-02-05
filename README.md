@@ -140,3 +140,28 @@ pick up upstream fixes.
 Each package keeps its own license (MIT for `quad_legs` and `ws2812b_ros`,
 Apache-2.0 for `motor_interfaces`, vendor licenses for the submodules). See the
 respective subdirectories for details.
+
+## Connections chart (system integration)
+
+| Module | Interface | Connects to | Notes |
+| --- | --- | --- | --- |
+| Jetson host | CAN (`can0`) | CubeMars motor controllers | Motor command + telemetry path. |
+| Jetson host | USB | Joystick | Operator input via `sensor_msgs/Joy`. |
+| Jetson host | SPI MOSI | WS2812B DIN (through level shifter) | LED status output. |
+| Jetson host | USB 3.x | ZED camera | Depth and vision streams. |
+| Jetson host | I2C/UART | BNO08x IMU | Orientation data for estimation. |
+| Jetson host | USB serial | Teensy latch controller | Latch angle commands. |
+| All devices | Ground | Shared power return | Required for stable signaling. |
+
+## Electrical schematic (high-level)
+
+```text
+Battery -> Power Distribution -> (motor rail) -> CubeMars motor drivers
+                              -> (5V rail)    -> Jetson + sensors + LEDs
+
+Jetson CAN (can0) ----------------------------> CubeMars network
+Jetson SPI MOSI -> 74AHCT level shifter ------> WS2812B DIN chain
+Jetson USB -----------------------------------> Joystick / ZED / Teensy
+Jetson I2C/UART ------------------------------> BNO08x IMU
+All subsystem grounds ------------------------> Common GND
+```
