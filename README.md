@@ -123,6 +123,42 @@ Because these three folders are submodules, their code lives in separate
 repositories. Update them independently (`git submodule update --remote`) to
 pick up upstream fixes.
 
+
+## Rosbag CSV export utility
+
+Use `python/rosbag_to_csv.py` to export ROS 2 bag topics into per-topic CSV files with
+**units on the second row**.
+
+```bash
+source /opt/ros/humble/setup.bash
+python3 python/rosbag_to_csv.py /path/to/bag --output-dir ./csv_export
+```
+
+Optional flags:
+
+- `--topics /imu/data /bar30/depth` to export only selected topics
+- `--storage-id sqlite3|mcap` if auto-detection is ambiguous
+- `--units-json units.json` to override default unit guesses
+
+`units.json` can be either a global map:
+
+```json
+{
+  "pressure": "kPa",
+  "depth": "m"
+}
+```
+
+or topic-specific:
+
+```json
+{
+  "/bar30/data": {
+    "pressure": "kPa"
+  }
+}
+```
+
 ## Development tips
 
 * Use `tmux` or the provided tmux UI so you can watch motor logs and run
