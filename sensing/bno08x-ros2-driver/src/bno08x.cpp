@@ -64,8 +64,8 @@ bool BNO08x::init(int32_t sensor_id) {
   // Open SH2 interface (also registers non-sensor event handler.)
   status = sh2_open(&HAL_, hal_callback, this);
   if (status != SH2_OK) {
-    return false;
     std::cerr << "BNO08x - Failed to open SH2 interface" << std::endl;
+    return false;
   }
 
   // Check connection partially by getting the product id's
@@ -90,8 +90,8 @@ bool BNO08x::init(int32_t sensor_id) {
   // Register sensor listener
   status = sh2_setSensorCallback(sensor_event_callback, this);
   if (status != SH2_OK) {
-    return false;
     std::cerr << "BNO08x - Failed to set sensor callback" << std::endl;
+    return false;
   }
 
   return true;
