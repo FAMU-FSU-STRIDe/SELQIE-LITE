@@ -3,13 +3,13 @@
 <package format="3">
   <name>latch</name>
   <version>0.0.1</version>
-  <description>ROS 2 Jetson GPIO PWM driver for the latch servo</description>
+  <description>ROS 2 serial driver for the Teensy latch servo + reed switch controller</description>
   <maintainer email="rlk20@fsu.edu">Ryan</maintainer>
   <license>MIT</license>
 
   <exec_depend>rclpy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>python3-jetson-gpio</exec_depend>
+  <exec_depend>python3-serial</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
