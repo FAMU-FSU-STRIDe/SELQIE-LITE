@@ -12,7 +12,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "port": "/dev/serial/by-id/usb-Teensyduino_USB_Serial_14238250-if00",
+                        "port": "/dev/serial/by-id/usb-Arduino_Nano_33_BLE-if00",
                         "baud": 115200,
                         "timeout_s": 0.2,
                     }
