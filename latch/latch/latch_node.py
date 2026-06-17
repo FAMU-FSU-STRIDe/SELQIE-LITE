@@ -1,158 +1,58 @@
 #!/usr/bin/env python3
-"""ROS 2 node to command a Teensy latch controller over USB serial + publish reed switch state."""
+"""ROS 2 node to command a servo latch via Jetson GPIO PWM on pin 32."""
 from __future__ import annotations
 
-import threading
-import time
-from typing import Optional
-
+import Jetson.GPIO as GPIO
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Bool, Float64
+from std_msgs.msg import Float64
 
-import serial
+
+# Standard servo PWM: 50 Hz, 1 ms–2 ms pulse
+_PWM_HZ = 50
+_MIN_DUTY = 2.5   # ~0 deg  (1 ms / 20 ms)
+_MAX_DUTY = 12.5  # ~180 deg (2.5 ms / 20 ms)
+
+
+def _angle_to_duty(angle_deg: float) -> float:
+    angle_deg = max(0.0, min(180.0, angle_deg))
+    return _MIN_DUTY + (angle_deg / 180.0) * (_MAX_DUTY - _MIN_DUTY)
 
 
 class LatchNode(Node):
     def __init__(self) -> None:
         super().__init__("latch_node")
 
-        self.declare_parameter("port", "/dev/ttyACM0")
-        self.declare_parameter("baud", 115200)
-        self.declare_parameter("timeout_s", 0.2)
+        self.declare_parameter("servo_pin", 32)
+        self.declare_parameter("gpio_mode", "BOARD")
 
-        self.port = self.get_parameter("port").get_parameter_value().string_value
-        self.baud = int(self.get_parameter("baud").get_parameter_value().integer_value)
-        self.timeout_s = float(self.get_parameter("timeout_s").get_parameter_value().double_value)
+        self.pin = int(self.get_parameter("servo_pin").value)
+        mode = str(self.get_parameter("gpio_mode").value).upper()
 
-        self.ser: Optional[serial.Serial] = None
-        self._serial_lock = threading.Lock()
-        self._stop_event = threading.Event()
-        self._reader_thread: Optional[threading.Thread] = None
+        GPIO.setmode(GPIO.BCM if mode == "BCM" else GPIO.BOARD)
+        GPIO.setup(self.pin, GPIO.OUT, initial=GPIO.LOW)
 
-        # Publishers/subscribers
+        self._pwm = GPIO.PWM(self.pin, _PWM_HZ)
+        self._pwm.start(_angle_to_duty(90.0))  # start at neutral
+
         self.create_subscription(Float64, "latch_angle_cmd", self.on_latch_cmd, 10)
-        self.reed_pub = self.create_publisher(Bool, "reed_switch", 10)
-
-        # Open serial + start reader
-        self._open_serial()
-        self._start_reader()
 
         self.get_logger().info(
-            "Latch serial node ready:\n"
-            f"  port: {self.port}\n"
-            f"  baud: {self.baud}\n"
-            f"  timeout_s: {self.timeout_s}\n"
-            "Publishing:\n"
-            "  reed_switch (std_msgs/Bool)"
+            f"Latch servo node ready: BOARD pin {self.pin}, {_PWM_HZ} Hz PWM"
         )
-
-    def _open_serial(self) -> None:
-        with self._serial_lock:
-            # Close if needed
-            if self.ser is not None:
-                try:
-                    self.ser.close()
-                except Exception:
-                    pass
-                self.ser = None
-
-            # Open
-            try:
-                self.ser = serial.Serial(
-                    port=self.port,
-                    baudrate=self.baud,
-                    timeout=self.timeout_s,
-                    write_timeout=self.timeout_s,
-                )
-                # Small settle (Teensy can reset on open)
-                time.sleep(0.05)
-                self.get_logger().info(f"Connected serial: {self.port} @ {self.baud}")
-            except (serial.SerialException, OSError) as exc:
-                self.ser = None
-                self.get_logger().error(f"Failed to open serial {self.port}: {exc}")
-
-    def _start_reader(self) -> None:
-        self._reader_thread = threading.Thread(target=self._reader_loop, daemon=True)
-        self._reader_thread.start()
-
-    def _reader_loop(self) -> None:
-        """Continuously read lines and publish reed switch updates."""
-        while not self._stop_event.is_set():
-            s = None
-            with self._serial_lock:
-                s = self.ser
-
-            if s is None or not s.is_open:
-                # Try to reconnect periodically
-                time.sleep(0.5)
-                self._open_serial()
-                continue
-
-            try:
-                line = s.readline()  # bytes until \n or timeout
-                if not line:
-                    continue
-                text = line.decode("utf-8", errors="replace").strip()
-                if not text:
-                    continue
-
-                # Expect: "REED 0" or "REED 1"
-                if text.startswith("REED"):
-                    parts = text.split()
-                    if len(parts) >= 2 and parts[1] in ("0", "1"):
-                        msg = Bool()
-                        msg.data = (parts[1] == "1")
-                        self.reed_pub.publish(msg)
-                    else:
-                        self.get_logger().warning(f"Malformed REED line: {text}")
-                # Optional: you can handle "OK <deg>" / "PONG" / etc here if you want
-            except (serial.SerialException, OSError) as exc:
-                self.get_logger().error(f"Serial read failed: {exc}")
-                # Force reconnect
-                with self._serial_lock:
-                    try:
-                        if self.ser:
-                            self.ser.close()
-                    except Exception:
-                        pass
-                    self.ser = None
-                time.sleep(0.2)
 
     def on_latch_cmd(self, msg: Float64) -> None:
         angle_deg = float(msg.data)
-        payload = f"{angle_deg:.1f}\n".encode("utf-8")
-
-        with self._serial_lock:
-            if self.ser is None or not self.ser.is_open:
-                self.get_logger().warning("Serial not connected; cannot send latch command")
-                return
-            try:
-                self.ser.write(payload)
-                self.ser.flush()
-                # Keep this as debug to avoid spamming INFO at control rate
-                self.get_logger().debug(f"Sent latch angle {angle_deg:.1f} deg")
-            except (serial.SerialException, OSError) as exc:
-                self.get_logger().error(f"Serial write failed: {exc}")
-                try:
-                    self.ser.close()
-                except Exception:
-                    pass
-                self.ser = None
+        duty = _angle_to_duty(angle_deg)
+        self._pwm.ChangeDutyCycle(duty)
+        self.get_logger().debug(f"Servo angle {angle_deg:.1f} deg -> duty {duty:.2f}%")
 
     def destroy_node(self) -> None:
-        self._stop_event.set()
-        if self._reader_thread:
-            self._reader_thread.join(timeout=1.0)
-
-        with self._serial_lock:
-            if self.ser:
-                try:
-                    self.ser.close()
-                except Exception:
-                    pass
-                self.ser = None
-
+        try:
+            self._pwm.stop()
+        except Exception:
+            pass
+        GPIO.cleanup(self.pin)
         super().destroy_node()
 
 
