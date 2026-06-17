@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ROS 2 node for Teensy-based latch servo + reed switch over USB serial.
+"""ROS 2 node for Arduino Nano 33 BLE latch servo + reed switch over USB serial.
 
 Protocol (115200 baud):
   Jetson → Teensy:  "<angle_deg>\\n"          e.g. "90.0\\n"
