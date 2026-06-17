@@ -61,8 +61,10 @@ class LatchNode(Node):
                     baudrate=self.baud,
                     timeout=self.timeout_s,
                     write_timeout=self.timeout_s,
+                    dsrdtr=False,
+                    rtscts=False,
                 )
-                time.sleep(0.05)
+                time.sleep(2.0)  # wait for Arduino to boot after DTR reset
                 self.get_logger().info(f"Serial connected: {self.port}")
             except (serial.SerialException, OSError) as exc:
                 self.ser = None

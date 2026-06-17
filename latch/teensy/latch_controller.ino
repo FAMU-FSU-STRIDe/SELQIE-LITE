@@ -23,7 +23,7 @@ unsigned long lastReedSendMs = 0;
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial);  // wait for USB serial on Nano 33 BLE
+  delay(1000);  // allow USB CDC to enumerate
 
   latchServo.attach(SERVO_PIN);
   latchServo.write(90);  // neutral on boot
