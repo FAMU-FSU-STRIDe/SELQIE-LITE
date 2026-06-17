@@ -12,8 +12,9 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "servo_pin": 32,
-                        "gpio_mode": "BOARD",
+                        "port": "/dev/serial/by-id/usb-Teensyduino_USB_Serial_14238250-if00",
+                        "baud": 115200,
+                        "timeout_s": 0.2,
                     }
                 ],
             )
