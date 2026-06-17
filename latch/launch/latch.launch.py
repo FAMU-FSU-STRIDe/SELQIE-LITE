@@ -12,7 +12,7 @@ def generate_launch_description():
                 output="screen",
                 parameters=[
                     {
-                        "port": "/dev/ttyACM0",
+                        "port": "/dev/serial/by-id/usb-Arduino_Nano_33_BLE_B83E55A17306087A-if00",
                         "baud": 115200,
                         "timeout_s": 0.2,
                     }
