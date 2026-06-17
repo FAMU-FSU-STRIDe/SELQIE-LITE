@@ -30,9 +30,9 @@ def generate_launch_description():
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(MOTOR_LAUNCH_FILE)
         ),
-#        IncludeLaunchDescription(
-#            PythonLaunchDescriptionSource(LATCH_LAUNCH_FILE)
-#        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(LATCH_LAUNCH_FILE)
+        ),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(LEAK_SENSOR_LAUNCH_FILE)
         ),
