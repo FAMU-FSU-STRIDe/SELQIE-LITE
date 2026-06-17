@@ -10,8 +10,8 @@ from std_msgs.msg import Float64
 
 # Standard servo PWM: 50 Hz, 1 ms–2 ms pulse
 _PWM_HZ = 50
-_MIN_DUTY = 2.5   # ~0 deg  (1 ms / 20 ms)
-_MAX_DUTY = 12.5  # ~180 deg (2.5 ms / 20 ms)
+_MIN_DUTY = 5.0   # 0 deg   (1 ms / 20 ms)
+_MAX_DUTY = 10.0  # 180 deg (2 ms / 20 ms)
 
 
 def _angle_to_duty(angle_deg: float) -> float:
